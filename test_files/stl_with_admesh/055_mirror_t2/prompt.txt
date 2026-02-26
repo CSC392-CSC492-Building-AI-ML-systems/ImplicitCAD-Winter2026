@@ -1,0 +1,12 @@
+Please generate ImplicitCAD (extopenscad) code for a 3D model named mirror_001.
+
+Model Description:
+a shape and its mirror image: a box 30x10x20mm mirrored across the YZ plane, separated at origin
+
+Requirements:
+Use ImplicitCAD-supported primitives: cube, sphere, cylinder, cone, torus, etc.
+Use boolean operations (union, difference, intersection) to combine shapes.
+All dimensions are in millimeters (mm).
+Include clear English comments explaining each part.
+The code must be directly runnable in ImplicitCAD and exportable as an STL file.
+Use parametric design with named variables for all key dimensions.

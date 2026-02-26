@@ -1,0 +1,12 @@
+Please generate ImplicitCAD (extopenscad) code for a 3D model named rounded_union_002.
+
+Model Description:
+a cylinder radius 15mm height 40mm smoothly blended with a sphere radius 15mm on top, blending radius 4mm
+
+Requirements:
+Use ImplicitCAD-supported primitives: cube, sphere, cylinder, cone, torus, etc.
+Use boolean operations (union, difference, intersection) to combine shapes.
+All dimensions are in millimeters (mm).
+Include clear English comments explaining each part.
+The code must be directly runnable in ImplicitCAD and exportable as an STL file.
+Use parametric design with named variables for all key dimensions.

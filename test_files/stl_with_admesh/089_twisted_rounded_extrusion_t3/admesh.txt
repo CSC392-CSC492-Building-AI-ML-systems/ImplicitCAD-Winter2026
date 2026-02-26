@@ -1,0 +1,37 @@
+ADMesh version 0.98.5, Copyright (C) 1995, 1996 Anthony D. Martin
+ADMesh comes with NO WARRANTY.  This is free software, and you are welcome to
+redistribute it under certain conditions.  See the file COPYING for details.
+Opening /Users/liuziao/Desktop/csc398/ImplicitCAD-Winter2026/data/testset/stl/089_twisted_rounded_extrusion_t3/model.stl
+Checking exact...
+Checking nearby. Tolerance= 0.000000 Iteration=1 of 2...  Fixed 0 edges.
+Checking nearby. Tolerance= 0.005831 Iteration=2 of 2...  Fixed 0 edges.
+Removing unconnected facets...
+Filling holes...
+Checking normal directions...
+Checking normal values...
+Calculating volume...
+Verifying neighbors...
+
+================= Results produced by ADMesh version 0.98.5 ================
+Input file         : /Users/liuziao/Desktop/csc398/ImplicitCAD-Winter2026/data/testset/stl/089_twisted_rounded_extrusion_t3/model.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -15.000000, Max X =  15.000000
+Min Y = -15.000000, Max Y =  15.000000
+Min Z = -0.000000, Max Z =  40.000000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  6043                6062
+Facets with 1 disconnected edge  :    69                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :    69                   0
+=== Processing Statistics ===     ===== Other Statistics =====
+Number of parts       :     1        Volume   :  27862.437500
+Degenerate facets     :     4
+Edges fixed           :     0
+Facets removed        :     4
+Facets added          :    23
+Facets reversed       :    23
+Backwards edges       :     0
+Normals fixed         :     0

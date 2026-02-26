@@ -1,0 +1,37 @@
+ADMesh version 0.98.5, Copyright (C) 1995, 1996 Anthony D. Martin
+ADMesh comes with NO WARRANTY.  This is free software, and you are welcome to
+redistribute it under certain conditions.  See the file COPYING for details.
+Opening /Users/liuziao/Desktop/csc398/ImplicitCAD-Winter2026/data/testset/stl/002_cylinder_t1/model.stl
+Checking exact...
+Checking nearby. Tolerance= 0.069411 Iteration=1 of 2...  Fixed 0 edges.
+Checking nearby. Tolerance= 0.073195 Iteration=2 of 2...  Fixed 0 edges.
+Removing unconnected facets...
+Filling holes...
+Checking normal directions...
+Checking normal values...
+Calculating volume...
+Verifying neighbors...
+
+================= Results produced by ADMesh version 0.98.5 ================
+Input file         : /Users/liuziao/Desktop/csc398/ImplicitCAD-Winter2026/data/testset/stl/002_cylinder_t1/model.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -8.987742, Max X =  8.987742
+Min Y = -8.987742, Max Y =  8.987742
+Min Z = -0.013427, Max Z =  28.013428
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  6340                6348
+Facets with 1 disconnected edge  :    24                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :    24                   0
+=== Processing Statistics ===     ===== Other Statistics =====
+Number of parts       :     1        Volume   :  7111.564453
+Degenerate facets     :     0
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     8
+Facets reversed       :     8
+Backwards edges       :     0
+Normals fixed         :     0

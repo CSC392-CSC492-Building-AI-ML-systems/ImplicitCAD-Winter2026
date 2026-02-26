@@ -1,0 +1,12 @@
+Please generate ImplicitCAD (extopenscad) code for a 3D model named sphere_box_diff_001.
+
+Model Description:
+a 40mm cube with a spherical cavity of radius 18mm carved out from the center
+
+Requirements:
+Use ImplicitCAD-supported primitives: cube, sphere, cylinder, cone, torus, etc.
+Use boolean operations (union, difference, intersection) to combine shapes.
+All dimensions are in millimeters (mm).
+Include clear English comments explaining each part.
+The code must be directly runnable in ImplicitCAD and exportable as an STL file.
+Use parametric design with named variables for all key dimensions.

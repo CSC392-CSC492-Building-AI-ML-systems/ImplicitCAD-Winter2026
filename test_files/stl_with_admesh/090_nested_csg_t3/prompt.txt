@@ -1,0 +1,12 @@
+Please generate ImplicitCAD (extopenscad) code for a 3D model named nested_diff_001.
+
+Model Description:
+a sphere of radius 30mm with a cylinder of radius 10mm removed along each of the three axes (X, Y, Z)
+
+Requirements:
+Use ImplicitCAD-supported primitives: cube, sphere, cylinder, cone, torus, etc.
+Use boolean operations (union, difference, intersection) to combine shapes.
+All dimensions are in millimeters (mm).
+Include clear English comments explaining each part.
+The code must be directly runnable in ImplicitCAD and exportable as an STL file.
+Use parametric design with named variables for all key dimensions.

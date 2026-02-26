@@ -1,0 +1,12 @@
+Please generate ImplicitCAD (extopenscad) code for a 3D model named hole_plate_002.
+
+Model Description:
+a 70x50x6mm plate with four 5mm-radius mounting holes, one in each corner, 10mm from each edge
+
+Requirements:
+Use ImplicitCAD-supported primitives: cube, sphere, cylinder, cone, torus, etc.
+Use boolean operations (union, difference, intersection) to combine shapes.
+All dimensions are in millimeters (mm).
+Include clear English comments explaining each part.
+The code must be directly runnable in ImplicitCAD and exportable as an STL file.
+Use parametric design with named variables for all key dimensions.

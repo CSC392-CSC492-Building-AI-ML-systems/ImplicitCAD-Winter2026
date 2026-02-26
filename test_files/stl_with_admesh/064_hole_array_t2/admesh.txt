@@ -1,0 +1,37 @@
+ADMesh version 0.98.5, Copyright (C) 1995, 1996 Anthony D. Martin
+ADMesh comes with NO WARRANTY.  This is free software, and you are welcome to
+redistribute it under certain conditions.  See the file COPYING for details.
+Opening /Users/liuziao/Desktop/csc398/ImplicitCAD-Winter2026/data/testset/stl/064_hole_array_t2/model.stl
+Checking exact...
+Checking nearby. Tolerance= 0.009403 Iteration=1 of 2...  Fixed 0 edges.
+Checking nearby. Tolerance= 0.019454 Iteration=2 of 2...  Fixed 0 edges.
+Removing unconnected facets...
+Filling holes...
+Checking normal directions...
+Checking normal values...
+Calculating volume...
+Verifying neighbors...
+
+================= Results produced by ADMesh version 0.98.5 ================
+Input file         : /Users/liuziao/Desktop/csc398/ImplicitCAD-Winter2026/data/testset/stl/064_hole_array_t2/model.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -0.000000, Max X =  80.000000
+Min Y = -0.000000, Max Y =  60.000000
+Min Z = -0.041410, Max Z =  10.041410
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 : 14877               14878
+Facets with 1 disconnected edge  :     3                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     3                   0
+=== Processing Statistics ===     ===== Other Statistics =====
+Number of parts       :     1        Volume   :  41229.019531
+Degenerate facets     :     0
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     1
+Facets reversed       :     1
+Backwards edges       :     0
+Normals fixed         :    11

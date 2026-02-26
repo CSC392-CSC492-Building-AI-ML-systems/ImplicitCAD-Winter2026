@@ -1,0 +1,12 @@
+Please generate ImplicitCAD (extopenscad) code for a 3D model named complex_001.
+
+Model Description:
+a flanged pipe: a pipe with outer radius 18mm inner radius 14mm length 60mm, with a flange disk radius 28mm thickness 5mm at the base, and four 4mm-radius holes in the flange evenly spaced at radius 22mm
+
+Requirements:
+Use ImplicitCAD-supported primitives: cube, sphere, cylinder, cone, torus, etc.
+Use boolean operations (union, difference, intersection) to combine shapes.
+All dimensions are in millimeters (mm).
+Include clear English comments explaining each part.
+The code must be directly runnable in ImplicitCAD and exportable as an STL file.
+Use parametric design with named variables for all key dimensions.

@@ -1,0 +1,37 @@
+ADMesh version 0.98.5, Copyright (C) 1995, 1996 Anthony D. Martin
+ADMesh comes with NO WARRANTY.  This is free software, and you are welcome to
+redistribute it under certain conditions.  See the file COPYING for details.
+Opening /Users/liuziao/Desktop/csc398/ImplicitCAD-Winter2026/data/testset/stl/085_complex_bracket_t3/model.stl
+Checking exact...
+Checking nearby. Tolerance= 0.290298 Iteration=1 of 2...  Fixed 0 edges.
+Checking nearby. Tolerance= 0.297987 Iteration=2 of 2...  Fixed 0 edges.
+Removing unconnected facets...
+Filling holes...
+Checking normal directions...
+Checking normal values...
+Calculating volume...
+Verifying neighbors...
+
+================= Results produced by ADMesh version 0.98.5 ================
+Input file         : /Users/liuziao/Desktop/csc398/ImplicitCAD-Winter2026/data/testset/stl/085_complex_bracket_t3/model.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -0.000000, Max X =  50.000000
+Min Y = -0.000000, Max Y =  50.000000
+Min Z = -0.090475, Max Z =  30.090475
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  6908                6910
+Facets with 1 disconnected edge  :    12                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :    12                   0
+=== Processing Statistics ===     ===== Other Statistics =====
+Number of parts       :    33        Volume   :  22136.093750
+Degenerate facets     :     2
+Edges fixed           :     0
+Facets removed        :     2
+Facets added          :     4
+Facets reversed       :     4
+Backwards edges       :     0
+Normals fixed         :     0

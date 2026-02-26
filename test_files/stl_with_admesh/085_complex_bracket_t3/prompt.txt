@@ -1,0 +1,12 @@
+Please generate ImplicitCAD (extopenscad) code for a 3D model named complex_bracket_001.
+
+Model Description:
+a corner bracket: two 50x10x30mm arms at 90 degrees, joined with a 10x10x30mm corner block, with a 5mm-radius hole in each arm centered 25mm from the corner
+
+Requirements:
+Use ImplicitCAD-supported primitives: cube, sphere, cylinder, cone, torus, etc.
+Use boolean operations (union, difference, intersection) to combine shapes.
+All dimensions are in millimeters (mm).
+Include clear English comments explaining each part.
+The code must be directly runnable in ImplicitCAD and exportable as an STL file.
+Use parametric design with named variables for all key dimensions.

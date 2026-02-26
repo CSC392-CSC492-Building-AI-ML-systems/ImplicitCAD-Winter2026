@@ -1,0 +1,36 @@
+ADMesh version 0.98.5, Copyright (C) 1995, 1996 Anthony D. Martin
+ADMesh comes with NO WARRANTY.  This is free software, and you are welcome to
+redistribute it under certain conditions.  See the file COPYING for details.
+Opening /Users/liuziao/Desktop/csc398/ImplicitCAD-Winter2026/data/testset/stl/068_compound_t2/model.stl
+Checking exact...
+All facets connected.  No nearby check necessary.
+No unconnected need to be removed.
+No holes need to be filled.
+Checking normal directions...
+Checking normal values...
+Calculating volume...
+Verifying neighbors...
+
+================= Results produced by ADMesh version 0.98.5 ================
+Input file         : /Users/liuziao/Desktop/csc398/ImplicitCAD-Winter2026/data/testset/stl/068_compound_t2/model.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -19.959143, Max X =  19.959143
+Min Y = -19.959143, Max Y =  19.959143
+Min Z = -0.000000, Max Z =  79.934586
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  4526                4446
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===     ===== Other Statistics =====
+Number of parts       :     1        Volume   :  35338.601562
+Degenerate facets     :    80
+Edges fixed           :     0
+Facets removed        :    80
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0
