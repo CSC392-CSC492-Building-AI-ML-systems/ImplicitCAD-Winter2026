@@ -1,0 +1,1 @@
+﻿TODO: paste SDF info from ImplicitCAD for expected STL.
