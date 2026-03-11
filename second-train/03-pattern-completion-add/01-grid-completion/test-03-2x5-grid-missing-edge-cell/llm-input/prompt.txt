@@ -1,0 +1,1 @@
+Complete the pattern: this should be a full 2 by 5 grid of cubes on z=0. Cube size is [2,2,2]. Origins use step 3 in x and y. One edge cell is missing at the top-right corner. Add the missing cube.

@@ -1,0 +1,4 @@
+resolution 0.4334280543619599 in box (V3 (-8.5) (-8.5) (-1.5),V3 8.5 8.5 1.5)
+union [translate (V3 7.0 7.0 0.0) (sphere 1.5),translate (V3 (-7.0) 7.0 0.0) (sphere 1.5),translate (V3 7.0 (-7.0) 0.0) (sphere 1.5)]
+<<ghc: 34933864 bytes, 6 GCs, 184088/314912 avg/max bytes residency (2 samples), 134M in use, 0.000 INIT (0.002 elapsed), 0.000 MUT (0.010 elapsed), 0.000 GC (0.002 elapsed) :ghc>>
+

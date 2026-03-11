@@ -1,0 +1,1 @@
+There should be a complete 4 by 4 grid of cubes on z=0, with cube size [2,2,2] and step 4 in both x and y. One off-center cell is missing at grid index (3,2) using zero-based indices. Add the missing cube to complete the grid.

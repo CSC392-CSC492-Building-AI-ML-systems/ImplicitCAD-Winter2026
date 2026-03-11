@@ -1,0 +1,1 @@
+Complete the pattern: this should be a full 3 by 3 grid of cubes on the XY plane at z=0. Each cube is size [2,2,2], and origins are spaced by 4 units in x and y. One cube is missing at the center. Add the missing cube.

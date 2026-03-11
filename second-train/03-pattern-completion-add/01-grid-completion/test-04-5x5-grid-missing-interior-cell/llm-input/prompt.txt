@@ -1,0 +1,1 @@
+This scene should be a complete 5 by 5 grid of cubes on the XY plane. Cube size is [2,2,2], and grid step is 4. Exactly one interior cube is missing at index (3,3) using zero-based indices. Add the missing cube.

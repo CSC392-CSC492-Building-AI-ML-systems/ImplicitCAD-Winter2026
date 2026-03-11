@@ -1,0 +1,14 @@
+// Completed rectangular frame.
+union() {
+  // Bottom beam
+  translate([0, 0, 0]) cube(size=[16,2,2], center=false);
+
+  // Left beam
+  translate([0, 0, 0]) cube(size=[2,16,2], center=false);
+
+  // Right beam
+  translate([14, 0, 0]) cube(size=[2,16,2], center=false);
+
+  // Top beam
+  translate([0, 14, 0]) cube(size=[16,2,2], center=false);
+}

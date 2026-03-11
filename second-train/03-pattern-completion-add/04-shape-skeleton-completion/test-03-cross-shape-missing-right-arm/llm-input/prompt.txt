@@ -1,0 +1,1 @@
+This should be a 3D cross shape made of one center block and four arms on the XY plane at z=0, all with thickness 2 and height 2. The right arm is missing. Add the missing arm.

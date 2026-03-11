@@ -1,0 +1,1 @@
+This should be a two-level staircase platform: three lower cubes on z=0 at x={0,3,6}, and two upper cubes on z=2 at x={3,6}. All cubes are size [2,4,2]. One upper platform block is missing. Add the missing block.

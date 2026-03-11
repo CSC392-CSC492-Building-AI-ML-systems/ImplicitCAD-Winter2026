@@ -1,0 +1,1 @@
+There should be 8 corner spheres (r=1) at the corners of a box with x in {-6,6}, y in {-4,4}, z in {0,8}. One corner sphere is missing at (-6,-4,8). Add the missing sphere.

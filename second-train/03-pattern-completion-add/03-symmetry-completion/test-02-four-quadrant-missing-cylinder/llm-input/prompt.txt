@@ -1,0 +1,1 @@
+The model should have four-quadrant symmetry across x=0 and y=0 using identical cylinders (r=2, h=6, center=false). Existing base centers are (8,8,0), (-8,8,0), and (8,-8,0). Add the missing symmetric cylinder.

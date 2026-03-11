@@ -1,0 +1,1 @@
+The cylinders should be mirror-symmetric across y=0 with identical radius and height (r=2, h=5). Existing base centers are (4,7,0), (4,-7,0), and (-6,5,0). Add the missing mirrored cylinder.

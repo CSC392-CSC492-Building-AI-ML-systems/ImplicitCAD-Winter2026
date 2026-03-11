@@ -1,0 +1,1 @@
+This should be a rectangular frame made of four beams (bottom, top, left, right) in the XY plane at z=0. Beam thickness is 2 and height is 2. The top horizontal beam is missing. Add the missing beam.

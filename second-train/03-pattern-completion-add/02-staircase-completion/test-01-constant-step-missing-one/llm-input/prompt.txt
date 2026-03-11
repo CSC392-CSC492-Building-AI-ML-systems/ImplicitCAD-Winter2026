@@ -1,0 +1,1 @@
+This model should be an 8-step staircase made of identical cubes. Step i has origin [i*3, 0, i*2], cube size [2,6,2], for i=0..7. One middle step is missing. Find and add the missing step.

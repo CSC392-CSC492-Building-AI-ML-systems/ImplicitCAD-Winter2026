@@ -1,0 +1,1 @@
+Complete the barcode pattern: there should be 7 vertical bars along x with spacing 2. Each bar has size [1,2,h] at z=0, with heights [3,6,2,7,4,5,3] from left to right. One bar is missing at index 4 (zero-based). Add the missing bar.

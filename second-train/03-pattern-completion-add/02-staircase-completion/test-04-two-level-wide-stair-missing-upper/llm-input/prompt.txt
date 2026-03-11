@@ -1,0 +1,1 @@
+This should be a two-level wide staircase. Lower level cubes are at x={0,3,6,9}, z=0. Upper level cubes are at x={3,6,9}, z=2. All cubes are size [2,5,2]. One upper cube is missing. Add it.
