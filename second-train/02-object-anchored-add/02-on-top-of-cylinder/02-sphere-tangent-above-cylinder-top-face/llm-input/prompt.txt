@@ -1,0 +1,1 @@
+Add a sphere above the existing cylinder such that the sphere is tangent to the cylinder's top face. The sphere should have radius 1.5 and touch the cylinder's top face at exactly one point.

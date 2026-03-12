@@ -1,0 +1,1 @@
+Add a cube on top of the existing cube, but align the new cube's bottom-left-front corner with the existing cube's top-left-front corner. The new cube should have the same dimensions [4,4,4] as the existing cube.

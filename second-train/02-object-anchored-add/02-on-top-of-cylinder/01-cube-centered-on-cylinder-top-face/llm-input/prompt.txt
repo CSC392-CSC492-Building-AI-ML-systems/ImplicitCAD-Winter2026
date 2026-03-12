@@ -1,0 +1,1 @@
+Add a cube on top of the existing cylinder, centering the cube on the top face of the cylinder. The cube should have dimensions [3,3,3].

@@ -1,0 +1,1 @@
+Add a sphere beside the existing sphere with a gap of 1 unit between their surfaces. The new sphere should have radius 1.5 and be positioned along the x-axis from the existing sphere.

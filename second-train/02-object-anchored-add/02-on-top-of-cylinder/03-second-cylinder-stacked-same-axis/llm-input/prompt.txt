@@ -1,0 +1,1 @@
+Add a second cylinder on top of the existing cylinder, aligned on the same axis. The second cylinder should have height 3 and radius 1.5.

@@ -1,0 +1,1 @@
+Add a cylinder beside the existing cylinder, positioned so it touches the side of the target cylinder along the x-axis. The new cylinder should have height 4 and radius 1.5.

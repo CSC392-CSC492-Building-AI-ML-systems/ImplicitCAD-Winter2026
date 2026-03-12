@@ -1,0 +1,1 @@
+Add a cube beside the existing cube, positioned so it touches the right face of the target cube. The new cube should have the same dimensions [4,4,4] as the existing cube.
