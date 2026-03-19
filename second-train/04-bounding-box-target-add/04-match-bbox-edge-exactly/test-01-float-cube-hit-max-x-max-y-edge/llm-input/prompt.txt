@@ -1,0 +1,1 @@
+Add one cube so that the final scene hits the target bbox edge defined by max x = 44.85 and max y = 39.10 exactly, while staying within the current z range. The new cube should have lower-left-bottom corner at [41.65, 36.85, 3.00] and size [3.20, 2.25, 2.10]. Add only this cube.

@@ -1,0 +1,1 @@
+The scene should be mirror-symmetric across x=0 with spheres of radius 1.4. Existing centers are [-14.5, 22.75, 3.2], [14.5, 22.75, 3.2], and [19.25, 31.6, 4.1]. Add the missing mirrored sphere.

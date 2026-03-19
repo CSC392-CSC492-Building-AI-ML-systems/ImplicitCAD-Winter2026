@@ -1,0 +1,1 @@
+Add one cube so that the final scene max x becomes exactly 43.65. The new cube should have lower-left-bottom corner at [40.55, 23.4, 2.6] and size [3.1, 2.8, 2.2]. Add only this cube.

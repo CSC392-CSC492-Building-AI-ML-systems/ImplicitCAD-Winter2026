@@ -1,0 +1,1 @@
+Add one cylinder fully inside the current bounding box so the overall bounding box does not change. The new cylinder should have base center at [29.4, 20.8, 3.7], radius 1.2, and height 2.6. Add only this cylinder.

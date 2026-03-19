@@ -1,0 +1,1 @@
+Complete the pattern as a full 3 by 4 grid of cubes on z=1.25. Cube size is [1.5,1.5,1.5]. Origins use step 3.25 in x and 2.75 in y, starting from [18.5, 26.25, 1.25]. One corner cube is missing. Add the missing cube.

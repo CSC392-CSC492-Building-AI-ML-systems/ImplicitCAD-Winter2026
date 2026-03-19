@@ -1,0 +1,1 @@
+Add one cube fully inside the current bounding box so the overall bounding box does not change. The new cube should have lower-left-bottom corner at [27.4, 18.6, 4.2] and size [2.1, 1.8, 1.4]. Add only this cube.

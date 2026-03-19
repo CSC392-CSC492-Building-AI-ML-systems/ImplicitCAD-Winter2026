@@ -1,0 +1,1 @@
+Add one cube so that its max corner is exactly [47.8, 35.6, 12.4]. The new cube should have lower-left-bottom corner at [44.9, 32.8, 10.3] and size [2.9, 2.8, 2.1]. Add only this cube.

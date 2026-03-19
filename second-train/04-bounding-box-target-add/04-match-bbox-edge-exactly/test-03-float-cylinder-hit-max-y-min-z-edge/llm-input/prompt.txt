@@ -1,0 +1,1 @@
+Add one cylinder so that the final scene hits the target bbox edge defined by max y = 42.60 and min z = 1.40 exactly, while staying within the current x range. The new cylinder should have base center at [32.80, 41.05, 1.40], radius 1.55, and height 4.20. Add only this cylinder.

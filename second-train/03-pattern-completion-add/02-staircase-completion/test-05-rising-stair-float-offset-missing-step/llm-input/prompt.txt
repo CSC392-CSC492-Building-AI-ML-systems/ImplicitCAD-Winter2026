@@ -1,0 +1,1 @@
+This model should be a 6-step staircase made of identical blocks. Step i has origin [22.4 + i*2.8, 14.6, 1.4 + i*1.35], block size [1.6,4.2,1.1], for i=0..5. One step is missing. Add the missing step.

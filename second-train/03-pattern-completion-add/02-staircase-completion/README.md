@@ -1,28 +1,37 @@
 Staircase Completion Validation
 
 Goal
-- Validate whether a model correctly completes missing step/platform objects.
+- Judge whether the output correctly restores the missing staircase step or platform block.
 
-Input Files
-- `initial-sdf`: SDF output from the incomplete staircase model.
-- `expected-sdf`: SDF output from the correct completed staircase.
-- `pred-sdf` (runtime): SDF output from the model prediction result.
-
-Fields to Use from SDF
-- `bbox`: Parse from `resolution ... in box (V3 xmin ymin zmin,V3 xmax ymax zmax)`.
-- `expr`: Parse the geometry expression line starting with `union [`.
+Read From SDF
+- `bbox`: parse from `resolution ... in box (V3 xmin ymin zmin,V3 xmax ymax zmax)`.
+- `expr`: parse the geometry expression line starting with `union [`.
 - Ignore the final `<<ghc: ...>>` line.
 
-Recommended Validation Order
-1. `bbox` match:
-- Compare `pred-sdf` bbox with `expected-sdf` bbox.
-- Tolerance: absolute error <= `1e-6` per coordinate.
-2. `expr` exact match (normalized whitespace).
-3. Stair-specific structure checks (fallback):
-- Primitive count increase from `initial` to `pred` matches `initial->expected`.
-- Step progression rule is preserved (same x step and z step pattern as expected).
-- For two-level tasks, missing block appears on the correct level (correct z band).
+What Should Change
+- Primitive count should increase from `initial-sdf` to `pred-sdf` by the same amount as `initial-sdf` to `expected-sdf`.
+- The missing step/block should restore the staircase progression.
+- Final bbox may change if the missing step was on the outside of the staircase envelope.
 
-Pass Rule
-- Pass if step 1 and step 2 are true.
-- If exact expression is relaxed, require step 1 + all step 3 checks.
+What Should Stay Unchanged
+- Primitive type should stay consistent with the task.
+- Existing x progression and z progression rule should stay the same.
+- For two-level tasks, the level structure should stay the same except for the missing block being restored.
+
+How To Judge Correct
+1. Compare `pred-sdf` bbox with `expected-sdf` bbox.
+2. Compare normalized `expr` in `pred-sdf` with normalized `expr` in `expected-sdf`.
+3. If exact `expr` match is too strict, check:
+- same primitive count delta as expected
+- same x step and z step pattern as expected
+- restored object is on the correct level and step index
+
+Correct
+- `bbox` matches expected, and
+- `expr` matches expected, or the fallback checks all pass.
+
+Wrong
+- bbox differs unexpectedly
+- missing step restored at the wrong x or z
+- wrong level in two-level tasks
+- wrong primitive count delta

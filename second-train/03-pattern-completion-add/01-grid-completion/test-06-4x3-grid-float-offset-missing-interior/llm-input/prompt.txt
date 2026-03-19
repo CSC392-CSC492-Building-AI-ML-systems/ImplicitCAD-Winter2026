@@ -1,0 +1,1 @@
+This scene should be a complete 4 by 3 grid of cubes on z=2.5. Cube size is [1.25,1.75,1.0]. Origins use step 2.6 in x and 3.4 in y, starting from [31.2, 18.8, 2.5]. One interior cube is missing. Add the missing cube.

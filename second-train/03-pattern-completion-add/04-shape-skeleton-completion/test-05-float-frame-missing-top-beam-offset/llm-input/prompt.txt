@@ -1,0 +1,1 @@
+This should be a rectangular frame offset from the origin. Bottom beam starts at [24.6, 19.4, 2.2] with size [14.5,1.4,1.0]. Left and right beams have size [1.4,11.2,1.0]. The top beam is missing. Add the missing beam to complete the frame.

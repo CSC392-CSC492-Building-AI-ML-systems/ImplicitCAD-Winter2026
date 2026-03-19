@@ -1,0 +1,5 @@
+union() {
+  for (i = [0:5]) {
+    translate([22.4 + i * 2.8, 14.6, 1.4 + i * 1.35]) cube(size=[1.6,4.2,1.1], center=false);
+  }
+}

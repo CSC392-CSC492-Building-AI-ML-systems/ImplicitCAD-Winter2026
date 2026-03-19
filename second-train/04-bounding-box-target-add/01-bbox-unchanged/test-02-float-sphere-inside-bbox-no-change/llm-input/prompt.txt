@@ -1,0 +1,1 @@
+Add one sphere fully inside the current bounding box so the overall bounding box does not change. The new sphere should have center at [29.8, 21.6, 5.3] and radius 1.1. Add only this sphere.

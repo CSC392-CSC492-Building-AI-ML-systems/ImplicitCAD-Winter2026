@@ -1,0 +1,1 @@
+Add one cylinder so that the final scene max z becomes exactly 18.95. The new cylinder should have base center at [31.4, 28.6, 14.2], radius 1.35, and height 4.75. Add only this cylinder.

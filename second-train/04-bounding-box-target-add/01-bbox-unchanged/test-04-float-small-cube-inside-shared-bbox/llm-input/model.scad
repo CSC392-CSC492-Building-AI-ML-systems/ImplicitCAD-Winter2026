@@ -1,0 +1,4 @@
+union() {
+  translate([25.1, 18.3, 2.7]) cube(size=[8.8,8.1,5.2], center=false);
+  translate([34.8, 20.0, 3.5]) cube(size=[4.4,5.9,4.0], center=false);
+}

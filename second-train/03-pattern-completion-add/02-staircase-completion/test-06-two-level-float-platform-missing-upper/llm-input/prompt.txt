@@ -1,0 +1,1 @@
+This should be a two-level staircase platform offset away from the origin. Lower blocks are at x={27.5,30.7,33.9,37.1}, y=21.4, z=0.8. Upper blocks are at x={30.7,33.9,37.1}, y=21.4, z=2.15. All blocks are size [1.8,4.6,1.2]. One upper block is missing. Add it.

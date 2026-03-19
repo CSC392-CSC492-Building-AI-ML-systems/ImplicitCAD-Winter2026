@@ -1,32 +1,39 @@
 Shape Skeleton Completion Validation
 
 Goal
-- Validate whether a model correctly restores missing structural elements
-  (frame beam, cross arm, barcode bar, corner sphere, etc.).
+- Judge whether the output correctly restores the missing structural element.
 
-Input Files
-- `initial-sdf`: SDF output from the incomplete skeleton shape.
-- `expected-sdf`: SDF output from the correct completed skeleton.
-- `pred-sdf` (runtime): SDF output from the model prediction result.
-
-Fields to Use from SDF
-- `bbox`: Parse from `resolution ... in box (V3 xmin ymin zmin,V3 xmax ymax zmax)`.
-- `expr`: Parse the geometry expression line starting with `union [`.
+Read From SDF
+- `bbox`: parse from `resolution ... in box (V3 xmin ymin zmin,V3 xmax ymax zmax)`.
+- `expr`: parse the geometry expression line starting with `union [`.
 - Ignore the final `<<ghc: ...>>` line.
 
-Recommended Validation Order
-1. `bbox` match:
-- Compare `pred-sdf` bbox with `expected-sdf` bbox.
-- Tolerance: absolute error <= `1e-6` per coordinate.
-2. `expr` exact match (normalized whitespace).
-3. Skeleton-specific structure checks (fallback):
-- Primitive count increase from `initial` to `pred` matches `initial->expected`.
-- Missing structural role is restored:
-- frame: missing beam added with correct length/thickness/orientation
-- cross: missing arm added on correct side and axis
-- barcode: missing bar added at correct x index with correct height
-- corner set: missing corner primitive added at correct corner coordinate
+What Should Change
+- Primitive count should increase from `initial-sdf` to `pred-sdf` by the same amount as `initial-sdf` to `expected-sdf`.
+- The missing structural role should be restored:
+- frame beam
+- cross arm
+- barcode bar
+- corner sphere
+- Final bbox may stay the same or change, depending on whether the missing part is interior or on the outer boundary.
 
-Pass Rule
-- Pass if step 1 and step 2 are true.
-- If exact expression is relaxed, require step 1 + all step 3 checks.
+What Should Stay Unchanged
+- Existing layout rule should stay the same.
+- Primitive family should stay consistent with the task.
+- Thickness, bar spacing, arm direction, or corner pattern should stay consistent with the existing structure.
+
+How To Judge Correct
+1. Compare `pred-sdf` bbox with `expected-sdf` bbox.
+2. Compare normalized `expr` in `pred-sdf` with normalized `expr` in `expected-sdf`.
+3. If exact `expr` match is too strict, check:
+- same primitive count delta as expected
+- restored part has the correct role, position, orientation, and dimensions
+
+Correct
+- `bbox` matches expected, and
+- `expr` matches expected, or the fallback checks all pass.
+
+Wrong
+- wrong beam/arm/bar/corner location
+- wrong dimensions or orientation
+- wrong primitive count delta

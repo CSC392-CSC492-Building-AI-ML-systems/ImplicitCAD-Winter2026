@@ -1,0 +1,1 @@
+Add one cube so that its min corner is exactly [18.6, 21.4, 1.7]. The new cube should start at [18.6, 21.4, 1.7] with size [3.2, 2.6, 2.4]. Add only this cube.
