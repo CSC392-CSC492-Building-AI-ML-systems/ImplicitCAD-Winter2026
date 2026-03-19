@@ -1,0 +1,11 @@
+{
+  "name": "implicitcad-studio-server",
+  "version": "1.0.0",
+  "description": "Backend server for ImplicitCAD Studio: compile API and AI chat",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {},
+  "license": "AGPL-3.0-or-later"
+}

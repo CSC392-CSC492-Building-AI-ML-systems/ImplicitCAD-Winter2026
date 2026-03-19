@@ -1,0 +1,48 @@
+services:
+  # ImplicitCAD engine: runs implicitsnap (port 8080) for jsTHREE rendering
+  # Also has extopenscad binary for STL compilation
+  implicitcad:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.implicitcad
+    container_name: implicitcad-engine
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  # Node.js API server: compile, chat, file management
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: implicitcad-server
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - EXTOPENSCAD=/usr/local/bin/extopenscad
+      - WORKSPACE=/workspace
+      - LLM_COMMAND=${LLM_COMMAND:-echo "LLM not configured"}
+      - COMPILE_TIMEOUT=${COMPILE_TIMEOUT:-60}
+    volumes:
+      - ${WORKSPACE_DIR:-./_workspace}:/workspace
+      - implicitcad-bin:/usr/local/bin
+    depends_on:
+      - implicitcad
+    restart: unless-stopped
+
+  # React frontend served by nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: implicitcad-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+      - implicitcad
+    restart: unless-stopped
+
+volumes:
+  implicitcad-bin:

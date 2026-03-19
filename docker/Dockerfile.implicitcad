@@ -1,0 +1,41 @@
+# Multi-stage build for ImplicitCAD
+# Produces extopenscad + implicitsnap binaries
+
+# ── Stage 1: Build from source ────────────────────────────────────────────────
+FROM --platform=$BUILDPLATFORM haskell:9.6.6-slim AS builder
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        git ca-certificates pkg-config zlib1g-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+RUN git clone --depth 1 https://github.com/Haskell-Things/ImplicitCAD.git .
+
+# Enable implicitsnap flag
+RUN echo 'flags: +implicitsnap' >> cabal.project.local
+
+RUN cabal update && \
+    cabal build -j extopenscad implicitsnap && \
+    cp "$(cabal list-bin extopenscad)" /usr/local/bin/extopenscad && \
+    cp "$(cabal list-bin implicitsnap)" /usr/local/bin/implicitsnap
+
+# ── Stage 2: Minimal runtime ──────────────────────────────────────────────────
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libgmp10 zlib1g ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/local/bin/extopenscad /usr/local/bin/extopenscad
+COPY --from=builder /usr/local/bin/implicitsnap /usr/local/bin/implicitsnap
+
+RUN extopenscad --help > /dev/null 2>&1 || true
+
+WORKDIR /app
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+EXPOSE 8080
+CMD ["/app/entrypoint.sh"]

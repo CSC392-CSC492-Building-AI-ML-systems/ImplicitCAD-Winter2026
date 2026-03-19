@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-raised: var(--bg-raised);
+  --color-bg-hover: var(--bg-hover);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-dim: var(--accent-dim);
+
+  --color-ai: var(--ai);
+  --color-ai-dim: var(--ai-dim);
+  --color-ai-glow: var(--ai-glow);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+
+  --color-viewport: var(--viewport);
+
+  --font-ui: 'Sora', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Menlo', monospace;
+}
+
+@layer base {
+  :root {
+    --bg-base: #FFFFFF;
+    --bg-surface: #F8FAFC;
+    --bg-raised: #F1F5F9;
+    --bg-hover: #E2E8F0;
+    --border-subtle: #F1F5F9;
+    --border-default: #E2E8F0;
+    --border-strong: #CBD5E1;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --text-faint: #CBD5E1;
+    --accent: #2563EB;
+    --accent-hover: #1D4ED8;
+    --accent-dim: rgba(37, 99, 235, 0.08);
+    --ai: #7C3AED;
+    --ai-dim: rgba(124, 58, 237, 0.08);
+    --ai-glow: rgba(124, 58, 237, 0.15);
+    --success: #16A34A;
+    --warning: #D97706;
+    --error: #DC2626;
+    --viewport: #FAFAFA;
+  }
+
+  .dark {
+    --bg-base: #0B0F19;
+    --bg-surface: #111827;
+    --bg-raised: #1E293B;
+    --bg-hover: #334155;
+    --border-subtle: #1E293B;
+    --border-default: #334155;
+    --border-strong: #475569;
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --text-muted: #7C8DB5;
+    --text-faint: #475569;
+    --accent: #3B82F6;
+    --accent-hover: #60A5FA;
+    --accent-dim: rgba(59, 130, 246, 0.15);
+    --ai: #A78BFA;
+    --ai-dim: rgba(167, 139, 250, 0.15);
+    --ai-glow: rgba(167, 139, 250, 0.25);
+    --success: #22C55E;
+    --warning: #F59E0B;
+    --error: #EF4444;
+    --viewport: #030712;
+  }
+
+  body {
+    font-family: var(--font-ui);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+  }
+
+  ::selection {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* Focus indicators for accessibility */
+  button, a, input, select, textarea {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base;
+  }
+}
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes typingDot {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes paletteIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes pulseAccent {
+  0%, 100% { border-color: var(--accent); opacity: 0.6; }
+  50% { border-color: var(--accent); opacity: 1; }
+}
+
+.animate-msg-in {
+  animation: msgIn 0.2s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+.animate-drop-in {
+  animation: dropIn 0.15s ease;
+}
+
+.animate-palette-in {
+  animation: paletteIn 0.15s ease;
+}
+
+.animate-typing-dot {
+  animation: typingDot 1.4s infinite;
+}
+
+.animate-pulse-accent {
+  animation: pulseAccent 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-msg-in,
+  .animate-drop-in,
+  .animate-palette-in,
+  .animate-typing-dot,
+  .animate-pulse-accent {
+    animation: none;
+  }
+  .animate-spin {
+    animation: none;
+  }
+  .animate-pulse {
+    animation: none;
+  }
+  [style*="animation"] { animation: none !important; }
+}
