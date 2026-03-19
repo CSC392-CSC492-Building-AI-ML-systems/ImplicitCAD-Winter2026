@@ -1,1 +1,24 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/03-pattern-completion-add/03-symmetry-completion/test-05-mirror-x0-float-offset-missing-sphere/expected/initial.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -15.900000, Max X =  20.650000
+Min Y =  21.350000, Max Y =  33.000000
+Min Z =  1.800000, Max Z =  5.500000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  2640                2640
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     3       Volume          :    33.837975
+Degenerate facets     :     0       Surface area    :    73.676559
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0
+

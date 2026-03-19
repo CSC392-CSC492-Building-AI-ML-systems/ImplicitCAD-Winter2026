@@ -1,1 +1,24 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/03-pattern-completion-add/04-shape-skeleton-completion/test-06-float-barcode-offset-missing-bar/expected/initial.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X =  28.500000, Max X =  41.349998
+Min Y =  17.747583, Max Y =  19.352417
+Min Z =  0.896128, Max Z =  6.000005
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  7932                7932
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     5       Volume          :    31.635902
+Degenerate facets     :     0       Surface area    :    113.214905
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0
+

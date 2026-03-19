@@ -1,1 +1,24 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/04-bounding-box-target-add/02-extend-bbox-one-axis/test-03-float-cube-max-y-to-target/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X =  27.400000, Max X =  40.900002
+Min Y =  23.099195, Max Y =  39.450001
+Min Z =  2.200000, Max Z =  6.700000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  5216                5216
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     3       Volume          :    351.678375
+Degenerate facets     :     0       Surface area    :    399.778687
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0
+

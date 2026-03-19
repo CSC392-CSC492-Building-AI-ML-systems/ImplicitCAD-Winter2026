@@ -1,1 +1,24 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/03-pattern-completion-add/01-grid-completion/test-06-4x3-grid-float-offset-missing-interior/expected/initial.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X =  31.199747, Max X =  40.250252
+Min Y =  18.799999, Max Y =  27.350000
+Min Z =  2.500000, Max Z =  3.500000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  9724                9724
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :    11       Volume          :    24.016048
+Degenerate facets     :     0       Surface area    :    112.311600
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0
+

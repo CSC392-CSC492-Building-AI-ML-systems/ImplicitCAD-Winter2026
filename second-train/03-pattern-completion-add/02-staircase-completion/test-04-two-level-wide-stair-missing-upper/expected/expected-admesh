@@ -1,1 +1,24 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/03-pattern-completion-add/02-staircase-completion/test-04-two-level-wide-stair-missing-upper/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -0.000000, Max X =  11.000000
+Min Y = -0.003981, Max Y =  5.003982
+Min Z = -0.005285, Max Z =  4.005285
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  9940                9940
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     4       Volume          :    139.906097
+Degenerate facets     :     0       Surface area    :    274.742615
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0
+

@@ -1,1 +1,24 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/04-bounding-box-target-add/03-match-bbox-corner-exactly/test-01-float-cube-max-corner-exact/expected/initial.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X =  29.500000, Max X =  43.600517
+Min Y =  23.700001, Max Y =  32.599998
+Min Z =  2.800000, Max Z =  8.800000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  5668                5668
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     2       Volume          :    350.829803
+Degenerate facets     :     0       Surface area    :    368.434113
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0
+

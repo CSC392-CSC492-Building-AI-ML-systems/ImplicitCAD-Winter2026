@@ -1,1 +1,24 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/03-pattern-completion-add/04-shape-skeleton-completion/test-01-rectangular-frame-missing-top-beam/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -0.000000, Max X =  16.000000
+Min Y = -0.000000, Max Y =  16.000000
+Min Z = -0.000000, Max Z =  2.000000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  9488                9488
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     1       Volume          :    223.754471
+Degenerate facets     :     0       Surface area    :    443.308441
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0
+
