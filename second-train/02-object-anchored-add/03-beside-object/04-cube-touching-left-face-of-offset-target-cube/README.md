@@ -1,0 +1,5 @@
+# Cube Touching Left Face of Offset Target Cube Test
+
+## Description
+This tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThi[2This tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThi[2This tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThi The This tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThi[2This tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThireThis tesThis tesThis tesThthThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesThis tesTh-cube/llm-input/prompt.txt << 'EOF'
+Add a cube beside the existing offset target cube so that the new cube's right face touches the target cube's left face. The new cube should have dimensions [1.7,2.2,1.9] and be centered in y and z relative to the target cube.

@@ -1,0 +1,1 @@
+Add a cylinder below the existing cube, centered under the cube's bottom face. The cylinder should have radius 1.5, height 4, and its top face should touch the cube's bottom face.

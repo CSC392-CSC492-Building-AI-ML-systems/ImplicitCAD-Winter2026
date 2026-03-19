@@ -1,0 +1,5 @@
+# Sphere with Gap Above Offset Cylinder Top Face Test
+
+## Description
+This test validates controlled gap placement above a cylThis test validates controlled gap placement above a cylThis test skThis test validates controlled gap placement above a cylThis test validates controlled gap placement above a cylThis test skThis test validates controlled gap placement above a cylThis test validates controlled gap placeme= This test validates controlled gap placement above a cylThis test validates controlled gap placement above a cylThis test skThis test validates controlled gap placement above a cylThis test validates controlled gap placement above a cylThis test skThis test validates controlled gap placement above itsThis test validates controlled e.This test validates controlled gap placement above a cylThis test validates controlled gap placement above a cylThis test skThis test vatxt << 'EOF'
+Add a sphere above the existing offset cylinder with a 0.65 unit gap from the cylinder's top face. The sphere should have radius 1.2.

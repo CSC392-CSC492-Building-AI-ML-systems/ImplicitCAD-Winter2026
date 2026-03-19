@@ -1,0 +1,1 @@
+Add a sphere below the existing offset cube, centered in x and y to the cube, with a 0.4 unit gap from the cube's bottom face. The new sphere should have radius 1.05.

@@ -1,0 +1,1 @@
+Add a sphere beside the existing offset sphere along the positive y-axis with a 0.55 unit gap between surfaces. The new sphere should have radius 0.9.

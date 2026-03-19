@@ -1,0 +1,1 @@
+Add a cube below the existing offset cylinder, centered under the cylinder base. The cube should have size [2.0,2.0,2.0], and its top face should touch the cylinder's base face.
