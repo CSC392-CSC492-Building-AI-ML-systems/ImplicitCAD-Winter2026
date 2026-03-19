@@ -1,0 +1,1 @@
+Add one extruded hexagon polygon. Keep existing geometry unchanged. Place at position [3, 2, 0], extrude height 4, with radius (circumradius) 2.5.

@@ -1,0 +1,4 @@
+union() {
+  cube(size=[4, 4, 4]);
+  translate([5, 5, 5]) cylinder(r1=3, r2=1.5, h=3);
+}

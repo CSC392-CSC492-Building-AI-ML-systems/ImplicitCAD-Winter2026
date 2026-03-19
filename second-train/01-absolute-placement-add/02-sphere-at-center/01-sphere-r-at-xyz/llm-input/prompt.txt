@@ -1,0 +1,1 @@
+Add one sphere at an absolute coordinate. Keep all existing geometry unchanged. The new sphere must have radius 2.5 and center exactly at [2,-3,4].

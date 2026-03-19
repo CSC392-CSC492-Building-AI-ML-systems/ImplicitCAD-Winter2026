@@ -1,0 +1,1 @@
+Add one torus at an absolute coordinate. Keep existing geometry unchanged. Center at [5, 5, 5], major radius 6, minor radius 1.5.

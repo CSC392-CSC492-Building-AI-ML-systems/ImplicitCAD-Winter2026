@@ -1,0 +1,1 @@
+Add one cube at an absolute world coordinate. Keep all existing geometry unchanged. The new cube must use corner placement (center=false), have size [4,5,6], and corner origin exactly at [0,0,0].

@@ -1,0 +1,1 @@
+Add a large sphere. Keep existing geometry unchanged. Center at [0, 0, 0], radius 15.

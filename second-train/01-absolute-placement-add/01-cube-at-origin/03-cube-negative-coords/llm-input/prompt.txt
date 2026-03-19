@@ -1,0 +1,1 @@
+Add one cube at absolute coordinates using negative values. Keep existing geometry unchanged. Corner at [-5, -3, -2], size [3, 3, 3], use center=false.

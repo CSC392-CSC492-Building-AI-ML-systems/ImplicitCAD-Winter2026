@@ -1,0 +1,1 @@
+Add a very tall and thin cylinder. Keep existing geometry unchanged. Base center at [-3, 2, 0], radius 0.5, height 20.

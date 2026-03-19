@@ -1,0 +1,1 @@
+Add a torus centered at the world origin. Keep existing geometry unchanged. Center at [0, 0, 0], major radius 8, minor radius 2.

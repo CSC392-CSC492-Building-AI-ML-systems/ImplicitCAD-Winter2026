@@ -1,0 +1,4 @@
+union() {
+  translate([5, 5, 5]) cylinder(r=2, h=4);
+  translate([-8, -6, -3]) sphere(r=2.5);
+}

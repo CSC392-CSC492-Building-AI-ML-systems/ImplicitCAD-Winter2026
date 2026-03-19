@@ -1,0 +1,3 @@
+3D
+union [translate (V3 0.0 0.0 10.0) (sphere 2.0),translate (V3 1.0 1.0 0.0) (scale (V3 3.0 1.5 1.0) (extrude 6.0 (circle 1.0)))]
+<<ghc: 142035112 bytes, 11 GCs, 614986/992256 avg/max bytes residency (3 samples), 43M in use, 0.003 INIT (0.003 elapsed), 0.050 MUT (0.016 elapsed), 0.001 GC (0.004 elapsed) :ghc>>

@@ -1,0 +1,1 @@
+Add one elliptical cylinder using scale transformation. Keep existing geometry unchanged. Base center at [1, 1, 0], radius X=3, radius Y=1.5, height 6.

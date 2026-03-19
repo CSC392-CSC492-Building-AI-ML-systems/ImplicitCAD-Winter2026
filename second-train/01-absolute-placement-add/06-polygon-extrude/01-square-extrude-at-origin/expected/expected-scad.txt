@@ -1,0 +1,4 @@
+union() {
+  translate([10, 5, 0]) sphere(r=2);
+  translate([0, 0, 0]) linear_extrude(height=6) square(size=4);
+}
