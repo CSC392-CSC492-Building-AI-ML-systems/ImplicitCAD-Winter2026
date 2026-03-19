@@ -1,0 +1,1 @@
+Add a truncated cone (frustum). Keep existing geometry unchanged. Base center at [2, 2, 0], base radius 4, top radius 1.5, height 10.

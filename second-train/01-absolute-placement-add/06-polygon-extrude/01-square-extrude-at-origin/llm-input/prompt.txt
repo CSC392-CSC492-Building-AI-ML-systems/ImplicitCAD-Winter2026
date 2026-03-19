@@ -1,0 +1,1 @@
+Add one extruded square polygon. Keep existing geometry unchanged. Place at origin [0, 0, 0], extrude height 6, with side length 4.

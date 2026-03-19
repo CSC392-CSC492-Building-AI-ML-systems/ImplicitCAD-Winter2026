@@ -1,0 +1,1 @@
+Add a cone at negative coordinates. Keep existing geometry unchanged. Base center at [-4, -1, -3], radius 2, height 5.

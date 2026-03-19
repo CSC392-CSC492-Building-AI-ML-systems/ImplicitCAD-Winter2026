@@ -1,0 +1,1 @@
+Add a very small sphere. Keep existing geometry unchanged. Center at [-2, 4, 1], radius 0.75.

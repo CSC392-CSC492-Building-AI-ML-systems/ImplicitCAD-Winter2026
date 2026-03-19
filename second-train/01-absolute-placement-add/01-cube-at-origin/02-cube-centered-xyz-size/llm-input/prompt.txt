@@ -1,0 +1,1 @@
+Add one cube by center specification in absolute coordinates. Keep all existing geometry unchanged. The new cube has size [4,6,2], and its center must be exactly at [3,-2,5]. Use standard cube placement with center=false by converting center to corner coordinates.

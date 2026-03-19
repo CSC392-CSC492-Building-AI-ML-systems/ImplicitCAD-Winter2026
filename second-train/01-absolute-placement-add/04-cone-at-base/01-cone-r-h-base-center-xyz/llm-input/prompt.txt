@@ -1,0 +1,1 @@
+Add one cone at an absolute coordinate. Keep existing geometry unchanged. Base center at [0, 0, 0], radius 3, height 8, using center=false.

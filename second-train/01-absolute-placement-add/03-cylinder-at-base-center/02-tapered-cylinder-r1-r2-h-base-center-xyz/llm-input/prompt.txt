@@ -1,0 +1,1 @@
+Add one tapered cylinder by absolute base-center coordinates. Keep all existing geometry unchanged. The new cylinder must use center=false with r1=3, r2=1.5, h=7, and base center exactly at [6,-2,0].
