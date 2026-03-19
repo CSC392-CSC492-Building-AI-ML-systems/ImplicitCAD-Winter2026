@@ -1,7 +1,7 @@
 import { useRef, useEffect, useMemo, Component, type ReactNode } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Grid, GizmoHelper, GizmoViewport } from '@react-three/drei'
-import { PerspectiveCamera, Vector3, Mesh, MeshPhongMaterial, DoubleSide, PlaneGeometry, PCFSoftShadowMap } from 'three'
+import { PerspectiveCamera, Vector3, Mesh, MeshPhongMaterial, DoubleSide, PCFSoftShadowMap } from 'three'
 import { useViewerStore } from '../stores/viewerStore'
 import { useEditorStore } from '../stores/editorStore'
 import { Box, Cuboid, Loader2 } from 'lucide-react'
@@ -125,11 +125,22 @@ function getCSSVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
 
-function SceneContent() {
-  const showGrid = useViewerStore((s) => s.showGrid)
-  const isDark = useEditorStore((s) => s.isDark)
-  const shadowGroundGeo = useMemo(() => new PlaneGeometry(400, 400), [])
+const gridProps = {
+  args: [200, 200] as [number, number],
+  cellSize: 2,
+  cellThickness: 0.5,
+  sectionSize: 10,
+  sectionThickness: 1,
+  fadeDistance: 150,
+  fadeStrength: 3,
+  side: DoubleSide,
+}
 
+function SceneContent() {
+  const gridXY = useViewerStore((s) => s.gridXY)
+  const gridXZ = useViewerStore((s) => s.gridXZ)
+  const gridYZ = useViewerStore((s) => s.gridYZ)
+  const isDark = useEditorStore((s) => s.isDark)
   const themeColors = useMemo(() => ({
     gridCell: getCSSVar('--border-subtle'),
     gridSection: getCSSVar('--border-default'),
@@ -145,17 +156,30 @@ function SceneContent() {
       <directionalLight position={[-40, -30, 20]} intensity={0.3} color="#B0C4DE" />
       <directionalLight position={[0, -50, -30]} intensity={0.2} color="#E0E7FF" />
 
-      {showGrid && (
+      {gridXY && (
         <Grid
-          args={[200, 200]}
-          cellSize={2}
-          cellThickness={0.5}
+          {...gridProps}
           cellColor={themeColors.gridCell}
-          sectionSize={10}
-          sectionThickness={1}
           sectionColor={themeColors.gridSection}
-          fadeDistance={300}
           rotation={[Math.PI / 2, 0, 0]}
+          position={[0, 0, 0]}
+        />
+      )}
+      {gridXZ && (
+        <Grid
+          {...gridProps}
+          cellColor={themeColors.gridCell}
+          sectionColor={themeColors.gridSection}
+          rotation={[0, 0, 0]}
+          position={[0, 0, 0]}
+        />
+      )}
+      {gridYZ && (
+        <Grid
+          {...gridProps}
+          cellColor={themeColors.gridCell}
+          sectionColor={themeColors.gridSection}
+          rotation={[0, Math.PI / 2, 0]}
           position={[0, 0, 0]}
         />
       )}
@@ -163,10 +187,6 @@ function SceneContent() {
       <AxisLine direction="x" color={themeColors.axisRed} />
       <AxisLine direction="y" color={themeColors.axisGreen} />
       <AxisLine direction="z" color={themeColors.axisBlue} />
-
-      <mesh geometry={shadowGroundGeo} receiveShadow position={[0, 0, -0.01]}>
-        <shadowMaterial opacity={0.08} />
-      </mesh>
 
       <ModelMesh />
       <CameraRegistrar />

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Square, Triangle, Hexagon, Grid3X3, Download, RotateCcw, Camera, Settings } from 'lucide-react'
+import { Square, Triangle, Hexagon, Download, RotateCcw, Camera, Settings } from 'lucide-react'
 import { useViewerStore } from '../stores/viewerStore'
 import { useEditorStore } from '../stores/editorStore'
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
@@ -23,12 +23,16 @@ function getQualityLabel(slider: number): string {
 
 export function ViewerToolbar() {
   const wireframe = useViewerStore((s) => s.wireframe)
-  const showGrid = useViewerStore((s) => s.showGrid)
+  const gridXY = useViewerStore((s) => s.gridXY)
+  const gridXZ = useViewerStore((s) => s.gridXZ)
+  const gridYZ = useViewerStore((s) => s.gridYZ)
   const resolution = useViewerStore((s) => s.resolution)
   const geometry = useViewerStore((s) => s.geometry)
   const lastStlBlob = useViewerStore((s) => s.lastStlBlob)
   const toggleWireframe = useViewerStore((s) => s.toggleWireframe)
-  const toggleGrid = useViewerStore((s) => s.toggleGrid)
+  const toggleGridXY = useViewerStore((s) => s.toggleGridXY)
+  const toggleGridXZ = useViewerStore((s) => s.toggleGridXZ)
+  const toggleGridYZ = useViewerStore((s) => s.toggleGridYZ)
   const setResolution = useViewerStore((s) => s.setResolution)
   const setCameraPreset = useViewerStore((s) => s.setCameraPreset)
   const fnSegments = useViewerStore((s) => s.fnSegments)
@@ -97,7 +101,9 @@ export function ViewerToolbar() {
       <ToolBtn icon={<Triangle size={16} />} title="Top View" onClick={() => setCameraPreset('top')} />
       <ToolBtn icon={<Hexagon size={16} />} title="Isometric" onClick={() => setCameraPreset('iso')} />
       <div className="w-px h-6 bg-border-default mx-0.5" />
-      <ToolBtn icon={<Grid3X3 size={16} />} title="Grid" active={showGrid} onClick={toggleGrid} />
+      <ToolBtn icon={<span className="text-[10px] font-mono font-bold leading-none">XY</span>} title="Grid XY (floor)" active={gridXY} onClick={toggleGridXY} />
+      <ToolBtn icon={<span className="text-[10px] font-mono font-bold leading-none">XZ</span>} title="Grid XZ (front wall)" active={gridXZ} onClick={toggleGridXZ} />
+      <ToolBtn icon={<span className="text-[10px] font-mono font-bold leading-none">YZ</span>} title="Grid YZ (side wall)" active={gridYZ} onClick={toggleGridYZ} />
       <ToolBtn
         icon={<div className="text-xs font-mono font-bold">W</div>}
         title="Wireframe"

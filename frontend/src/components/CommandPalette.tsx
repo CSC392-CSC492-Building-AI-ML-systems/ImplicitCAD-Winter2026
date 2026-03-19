@@ -44,7 +44,21 @@ export function CommandPalette({ onRender }: CommandPaletteProps) {
         }
       },
       { id: 'reset-layout', label: 'Reset Layout', action: () => useLayoutStore.getState().resetLayout() },
-      { id: 'toggle-grid', label: 'Toggle Grid', action: () => useViewerStore.getState().toggleGrid() },
+      { id: 'toggle-grid', label: 'Toggle All Grids', action: () => {
+          const s = useViewerStore.getState()
+          const anyOn = s.gridXY || s.gridXZ || s.gridYZ
+          if (anyOn) {
+            if (s.gridXY) s.toggleGridXY()
+            if (s.gridXZ) s.toggleGridXZ()
+            if (s.gridYZ) s.toggleGridYZ()
+          } else {
+            s.toggleGridXY()
+          }
+        }
+      },
+      { id: 'toggle-grid-xy', label: 'Toggle Grid XY', action: () => useViewerStore.getState().toggleGridXY() },
+      { id: 'toggle-grid-xz', label: 'Toggle Grid XZ', action: () => useViewerStore.getState().toggleGridXZ() },
+      { id: 'toggle-grid-yz', label: 'Toggle Grid YZ', action: () => useViewerStore.getState().toggleGridYZ() },
       { id: 'toggle-wireframe', label: 'Toggle Wireframe', action: () => useViewerStore.getState().toggleWireframe() },
       { id: 'reset-camera', label: 'Reset Camera', action: () => useViewerStore.getState().setCameraPreset('reset') },
       { id: 'view-front', label: 'Front View', action: () => useViewerStore.getState().setCameraPreset('front') },

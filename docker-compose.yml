@@ -8,6 +8,8 @@ services:
     container_name: implicitcad-engine
     ports:
       - "8080:8080"
+    volumes:
+      - implicitcad-bin:/opt/implicitcad-bin
     restart: unless-stopped
 
   # Node.js API server: compile, chat, file management
@@ -20,13 +22,13 @@ services:
       - "4000:4000"
     environment:
       - PORT=4000
-      - EXTOPENSCAD=/usr/local/bin/extopenscad
+      - EXTOPENSCAD=/opt/implicitcad-bin/extopenscad
       - WORKSPACE=/workspace
       - LLM_COMMAND=${LLM_COMMAND:-echo "LLM not configured"}
       - COMPILE_TIMEOUT=${COMPILE_TIMEOUT:-60}
     volumes:
       - ${WORKSPACE_DIR:-./_workspace}:/workspace
-      - implicitcad-bin:/usr/local/bin
+      - implicitcad-bin:/opt/implicitcad-bin:ro
     depends_on:
       - implicitcad
     restart: unless-stopped
@@ -38,7 +40,7 @@ services:
       dockerfile: Dockerfile
     container_name: implicitcad-frontend
     ports:
-      - "3000:3000"
+      - "3000"
     depends_on:
       - server
       - implicitcad

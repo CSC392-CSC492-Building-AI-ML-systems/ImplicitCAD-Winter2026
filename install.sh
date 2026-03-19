@@ -90,7 +90,7 @@ fi
 
 # ── 4. Port Checks ──────────────────────────────────────────────────────────
 
-for PORT in 3000 4000 8080; do
+for PORT in 4000 8080; do
   if lsof -i:$PORT &>/dev/null 2>&1 || ss -tlnp 2>/dev/null | grep -q ":$PORT "; then
     warn "Port $PORT already in use"
   fi
@@ -129,14 +129,31 @@ echo ""
 info "Build complete. Starting services..."
 $COMPOSE up -d
 
+FRONTEND_BINDING=$($COMPOSE port frontend 3000 2>/dev/null | awk 'NR==1{print $0}')
+SERVER_BINDING=$($COMPOSE port server 4000 2>/dev/null | awk 'NR==1{print $0}')
+IMPLICITCAD_BINDING=$($COMPOSE port implicitcad 8080 2>/dev/null | awk 'NR==1{print $0}')
+FRONTEND_PORT=$(printf '%s\n' "$FRONTEND_BINDING" | awk -F: 'NF{print $NF}')
+
+if [ -n "$FRONTEND_PORT" ]; then
+  FRONTEND_URL="http://localhost:$FRONTEND_PORT"
+else
+  FRONTEND_URL="http://localhost:<dynamic-port>"
+fi
+
+echo ""
+info "Published ports:"
+echo -e "  Frontend:    ${W}${FRONTEND_BINDING:-unavailable}${D}"
+echo -e "  Server API:  ${W}${SERVER_BINDING:-unavailable}${D}"
+echo -e "  ImplicitCAD: ${W}${IMPLICITCAD_BINDING:-unavailable}${D}"
+
 echo ""
 echo -e "${G}╔══════════════════════════════════════════════════════╗${D}"
 echo -e "${G}║${W}              Ready!                                  ${G}║${D}"
 echo -e "${G}╠══════════════════════════════════════════════════════╣${D}"
 echo -e "${G}║                                                      ║${D}"
-echo -e "${G}║  ${C}Open:  http://localhost:3000${G}                         ║${D}"
+echo -e "${G}║  ${C}Open:  ${FRONTEND_URL}${G}                    ║${D}"
 echo -e "${G}║                                                      ║${D}"
-echo -e "${G}║  ${D}Frontend:    http://localhost:3000 (React + nginx)${G}   ║${D}"
+echo -e "${G}║  ${D}Frontend:    ${FRONTEND_URL} (React + nginx)${G}   ║${D}"
 echo -e "${G}║  ${D}Server API:  http://localhost:4000 (Node.js)${G}         ║${D}"
 echo -e "${G}║  ${D}ImplicitCAD: http://localhost:8080 (implicitsnap)${G}    ║${D}"
 echo -e "${G}║  ${D}Workspace:   $WORKSPACE_DIR${G}                        ║${D}"
@@ -157,17 +174,17 @@ echo ""
 
 info "Waiting for services..."
 for i in $(seq 1 30); do
-  if curl -s http://localhost:3000 >/dev/null 2>&1; then
+  if [ -n "$FRONTEND_PORT" ] && curl -s "$FRONTEND_URL" >/dev/null 2>&1; then
     info "All services ready!"
     break
   fi
   sleep 2
 done
 
-if command -v open &>/dev/null; then
-  open http://localhost:3000
-elif command -v xdg-open &>/dev/null; then
-  xdg-open http://localhost:3000
-elif $IS_WSL && command -v cmd.exe &>/dev/null; then
-  cmd.exe /c start http://localhost:3000
+if [ -n "$FRONTEND_PORT" ] && command -v open &>/dev/null; then
+  open "$FRONTEND_URL"
+elif [ -n "$FRONTEND_PORT" ] && command -v xdg-open &>/dev/null; then
+  xdg-open "$FRONTEND_URL"
+elif [ -n "$FRONTEND_PORT" ] && $IS_WSL && command -v cmd.exe &>/dev/null; then
+  cmd.exe /c start "$FRONTEND_URL"
 fi

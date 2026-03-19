@@ -10,8 +10,6 @@ cd ImplicitCAD-Winter2026
 ./install.sh
 ```
 
-Open **http://localhost:3000**.
-
 > First build takes ~15-20 min (compiling ImplicitCAD from Haskell source). Subsequent starts take seconds.
 
 ### Requirements
@@ -21,32 +19,44 @@ Open **http://localhost:3000**.
 ### Docker Commands
 
 ```bash
-docker compose up -d              # Start all services
+./up.sh -d                        # Start all services and show ports
+./up.sh -d --build                # Rebuild and start, then show ports
 docker compose down               # Stop
 docker compose logs -f            # View logs
 docker compose build --no-cache   # Full rebuild
 ```
 
-## Local Development (no Docker)
+`./up.sh` wraps `docker compose up` and automatically prints the published ports after startup. The frontend uses a dynamic host port to avoid conflicts with anything already running on port 3000.
 
-### Prerequisites
+## Development (recommended workflow)
 
-- **Node.js** 18+
-- **ImplicitCAD** (`extopenscad` and/or `implicitsnap` on PATH)
-  - Install via Haskell/Cabal: `cabal install implicit`
-- **admesh** (optional, for STL validation): `brew install admesh` / `apt install admesh`
-
-### Run the Frontend
+Run the Docker backends and the Vite dev server locally for instant hot-reload:
 
 ```bash
+# Start only the backend containers
+docker compose up -d implicitcad server
+
+# Run the frontend dev server
 cd frontend
 npm install --legacy-peer-deps
 npm run dev
 ```
 
-Vite dev server starts at **http://localhost:5173**.
+Vite starts at **http://localhost:3000** with hot module replacement. API calls are proxied to the Docker backends automatically (`/api` -> `localhost:4000`, `/render` -> `localhost:8080`).
 
-### Run the Server
+### Running everything in Docker (production-like)
+
+```bash
+./up.sh -d --build
+```
+
+This builds the frontend into a static nginx image. Use when testing the production setup or deploying.
+
+### Prerequisites (local frontend dev)
+
+- **Node.js** 18+
+
+### Run the Server standalone (no Docker)
 
 ```bash
 cd server
@@ -77,32 +87,50 @@ docker exec implicitcad-engine extopenscad -o output.stl input.scad
 ## Architecture
 
 ```
-             http://localhost:3000
-                      |
-                  [ nginx ]
-                 /         \
-          /api/*            /render/*
-            |                   |
-     [ Node.js ]         [ implicitsnap ]
-     port 4000            port 8080
-     POST /api/compile    jsTHREE format
-     POST /api/chat       (real-time preview)
-     GET  /api/health
+        http://localhost:3000 (dev) or dynamic port (Docker)
+                    |
+             [ Vite / nginx ]
+               /         \
+        /api/*            /render/*
+          |                   |
+   [ Node.js ]         [ implicitsnap ]
+   port 4000            port 8080
+   POST /api/compile    jsTHREE format
+   POST /api/chat       (real-time preview)
+   GET  /api/health
 ```
 
 | Container | Role | Port |
 |-----------|------|------|
-| `implicitcad-engine` | ImplicitCAD: `implicitsnap` + `extopenscad` | 8080 |
-| `implicitcad-server` | Node.js API: compile, AI chat | 4000 |
-| `implicitcad-frontend` | React app via nginx | 3000 |
+| `implicitcad-engine` | ImplicitCAD: `implicitsnap` + `extopenscad` | host `8080` -> container `8080` |
+| `implicitcad-server` | Node.js API: compile, AI chat, admesh validation | host `4000` -> container `4000` |
+| `implicitcad-frontend` | React app via nginx (production only) | dynamic host port -> container `3000` |
+
+The server container uses a Debian base image (matching the engine) so the shared `extopenscad` binary runs correctly. The binary is shared via a Docker named volume mounted at `/opt/implicitcad-bin`.
 
 ## Features
 
 - **Code Editor** — Monaco with OpenSCAD syntax highlighting and auto-render
-- **3D Viewport** — Three.js viewer with orbit controls, wireframe, camera presets, quality slider
+- **3D Viewport** — Three.js viewer with orbit controls, wireframe, camera presets, per-axis grid planes
 - **AI Assistant** — Generate ImplicitCAD code from natural language (configurable LLM backend)
 - **File Explorer** — Browser File System Access API for local folder editing
 - **Export** — Download STL, viewport screenshots
+
+### Viewport Controls
+
+The bottom toolbar provides:
+
+| Button | Action |
+|--------|--------|
+| Front / Top / Iso | Camera preset angles |
+| XY / XZ / YZ | Toggle grid planes on each axis pair |
+| W | Toggle wireframe mode |
+| Reset | Reset camera to default position |
+| Download | Export STL |
+| Camera | Take viewport screenshot |
+| Settings | Quality slider, $fn segments, resolution, compat mode |
+
+Grid planes default to XY only (floor plane). Toggle XZ (front wall) or YZ (side wall) for additional reference planes. All grids are visible from both sides when orbiting.
 
 ## Keyboard Shortcuts
 
@@ -124,6 +152,7 @@ prompt/            Prompt templates for LLM benchmarking
 test_files/        96 reference test cases (STL + admesh + prompts)
 second-train/      Training data for LLM fine-tuning
 install.sh         One-click Docker setup
+up.sh              Docker compose wrapper that prints published ports
 icad               CLI wrapper for ImplicitCAD via Docker
 ```
 

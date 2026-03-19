@@ -29,6 +29,9 @@ interface ViewerState {
   isRendering: boolean
   wireframe: boolean
   showGrid: boolean
+  gridXY: boolean
+  gridXZ: boolean
+  gridYZ: boolean
   resolution: number
   backendMode: 'implicitsnap' | 'docker' | null
   cameraRef: PerspectiveCamera | null
@@ -42,6 +45,9 @@ interface ViewerState {
   setRendering: (v: boolean) => void
   toggleWireframe: () => void
   toggleGrid: () => void
+  toggleGridXY: () => void
+  toggleGridXZ: () => void
+  toggleGridYZ: () => void
   setResolution: (v: number) => void
   setBackendMode: (m: 'implicitsnap' | 'docker' | null) => void
   setCameraRef: (c: PerspectiveCamera | null) => void
@@ -60,6 +66,9 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   isRendering: false,
   wireframe: false,
   showGrid: true,
+  gridXY: true,
+  gridXZ: false,
+  gridYZ: false,
   resolution: 50,
   backendMode: null,
   cameraRef: null,
@@ -91,6 +100,18 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   setRendering: (isRendering) => set({ isRendering }),
   toggleWireframe: () => set((s) => ({ wireframe: !s.wireframe })),
   toggleGrid: () => set((s) => ({ showGrid: !s.showGrid })),
+  toggleGridXY: () => set((s) => {
+    const next = !s.gridXY
+    return { gridXY: next, showGrid: next || s.gridXZ || s.gridYZ }
+  }),
+  toggleGridXZ: () => set((s) => {
+    const next = !s.gridXZ
+    return { gridXZ: next, showGrid: next || s.gridXY || s.gridYZ }
+  }),
+  toggleGridYZ: () => set((s) => {
+    const next = !s.gridYZ
+    return { gridYZ: next, showGrid: next || s.gridXY || s.gridXZ }
+  }),
   setResolution: (resolution) => set({ resolution }),
   setBackendMode: (backendMode) => set({ backendMode }),
   setCameraRef: (cameraRef) => set({ cameraRef }),

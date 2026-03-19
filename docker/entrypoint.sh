@@ -1,4 +1,10 @@
 #!/bin/sh
+set -e
+
+mkdir -p /opt/implicitcad-bin
+cp /usr/local/bin/extopenscad /opt/implicitcad-bin/extopenscad
+chmod +x /opt/implicitcad-bin/extopenscad
+
 echo "Starting ImplicitCAD services..."
 echo "  extopenscad: $(extopenscad --help 2>&1 | head -1)"
 
