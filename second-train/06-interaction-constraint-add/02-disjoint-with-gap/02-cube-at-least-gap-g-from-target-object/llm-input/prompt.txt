@@ -1,0 +1,1 @@
+Add a cube of size [2,2,2] with a 0.5 unit gap from the existing sphere along +y, keeping the cube centered in x and z with respect to the sphere center.

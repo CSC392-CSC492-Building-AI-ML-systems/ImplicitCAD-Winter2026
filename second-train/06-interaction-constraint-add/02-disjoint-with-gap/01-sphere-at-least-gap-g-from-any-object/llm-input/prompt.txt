@@ -1,0 +1,1 @@
+Add a sphere with radius 1.2 so its surface is 1.0 units away from the existing cube, positioned along +x and centered in y and z relative to the cube.

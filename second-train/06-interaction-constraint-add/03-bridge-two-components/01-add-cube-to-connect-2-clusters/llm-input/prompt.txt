@@ -1,0 +1,1 @@
+Add a cube of size [2,1,1] that exactly fills the gap between the two existing cubes so all pieces become connected.

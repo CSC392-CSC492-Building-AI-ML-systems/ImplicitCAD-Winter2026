@@ -1,0 +1,1 @@
+Add a horizontal cylinder with h=3 and r=0.6 between the two existing cylinders along y so it touches both.

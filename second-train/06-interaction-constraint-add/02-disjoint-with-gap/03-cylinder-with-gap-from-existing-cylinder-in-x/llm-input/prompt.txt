@@ -1,0 +1,1 @@
+Add a cylinder with h=3 and r=0.8 so it stays 0.6 units away from the existing cylinder along +x, sharing y and base z alignment.

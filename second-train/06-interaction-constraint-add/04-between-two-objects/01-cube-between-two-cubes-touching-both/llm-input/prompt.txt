@@ -1,0 +1,1 @@
+Add a cube of size [3,2,2] in the gap between the two existing cubes so it touches both cubes without overlap.

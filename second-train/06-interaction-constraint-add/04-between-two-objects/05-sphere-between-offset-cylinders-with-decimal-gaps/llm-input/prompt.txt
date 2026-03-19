@@ -1,0 +1,1 @@
+Add a sphere of radius 0.8 centered between the inner side surfaces of the two offset cylinders so the sphere has an equal 1.025 unit gap to each cylinder.

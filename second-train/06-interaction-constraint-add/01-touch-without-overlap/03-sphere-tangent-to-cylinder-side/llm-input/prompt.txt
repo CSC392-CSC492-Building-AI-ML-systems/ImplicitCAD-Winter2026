@@ -1,0 +1,1 @@
+Add a sphere of radius 1 tangent to the +x side of the existing cylinder at mid-height, with no overlap.

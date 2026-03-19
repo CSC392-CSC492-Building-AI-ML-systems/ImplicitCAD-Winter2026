@@ -1,0 +1,5 @@
+union() {
+  translate([0, 0, 0]) cube(size=[2,2,2], center=false);
+  translate([5, 0, 0]) cube(size=[2,2,2], center=false);
+  translate([2, 0, 0]) cube(size=[3,2,2], center=false);
+}

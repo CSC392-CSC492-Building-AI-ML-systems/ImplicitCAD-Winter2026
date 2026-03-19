@@ -1,0 +1,4 @@
+union() {
+  translate([-4.2, 2.3, 1.75]) sphere(r=1.4);
+  translate([-5.0, 4.05, 1.15]) cube(size=[1.6,2.2,1.2], center=false);
+}

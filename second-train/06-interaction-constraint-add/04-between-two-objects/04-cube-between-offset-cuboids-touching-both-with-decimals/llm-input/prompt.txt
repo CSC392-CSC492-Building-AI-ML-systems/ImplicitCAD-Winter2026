@@ -1,0 +1,1 @@
+Add a cuboid of size [3.25,1.4,1.2] between the two offset cuboids so it touches both inner faces, centered in y and z to the shared span.

@@ -1,0 +1,1 @@
+Add a cube of size [2,3,4] so it touches the right face of the existing cube without overlap, centered along y and z on that face.

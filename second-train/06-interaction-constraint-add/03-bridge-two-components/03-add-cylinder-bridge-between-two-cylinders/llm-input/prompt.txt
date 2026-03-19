@@ -1,0 +1,1 @@
+Add a horizontal cylinder bridge with h=3.4 and r=0.4 at mid-height so it touches both existing vertical cylinders.

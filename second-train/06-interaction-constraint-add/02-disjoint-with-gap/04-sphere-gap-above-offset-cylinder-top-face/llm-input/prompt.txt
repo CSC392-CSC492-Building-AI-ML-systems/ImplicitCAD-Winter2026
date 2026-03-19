@@ -1,0 +1,1 @@
+Add a sphere of radius 0.95 above the offset cylinder so there is a 0.45 unit gap from the cylinder top face, keeping x and y aligned to the cylinder axis.

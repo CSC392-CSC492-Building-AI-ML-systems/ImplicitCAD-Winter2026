@@ -1,0 +1,1 @@
+Add a sphere of radius 1 centered between the two cubes along x so it has equal gap from both inner cube faces.

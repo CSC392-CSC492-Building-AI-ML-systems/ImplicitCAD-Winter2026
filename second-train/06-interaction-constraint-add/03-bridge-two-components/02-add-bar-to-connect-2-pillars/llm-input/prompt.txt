@@ -1,0 +1,1 @@
+Add a rectangular bar of size [3,1,1] near the top so it touches both pillars and connects them.

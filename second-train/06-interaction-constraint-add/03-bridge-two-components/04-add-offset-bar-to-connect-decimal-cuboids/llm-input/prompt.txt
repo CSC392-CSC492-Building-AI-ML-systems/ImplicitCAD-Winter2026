@@ -1,0 +1,1 @@
+Add a connector bar of size [2.8,0.9,0.7] that bridges the x-gap between the two offset cuboids while centered in y and z to their overlap region.
