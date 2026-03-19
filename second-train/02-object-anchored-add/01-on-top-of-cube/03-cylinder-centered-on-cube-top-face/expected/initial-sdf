@@ -1,0 +1,3 @@
+resolution 0.1818181818181818 in box (V3 0.0 0.0 0.0,V3 4.0 4.0 4.0)
+union [translate (V3 0.0 0.0 0.0) (withRounding 0.0 (translate (V3 0.0 0.0 0.0) (cube False (V3 4.0 4.0 4.0))))]
+<<ghc: 116501968 bytes, 11 GCs, 670244/1288600 avg/max bytes residency (4 samples), 44M in use, 0.004 INIT (0.004 elapsed), 0.052 MUT (0.022 elapsed), 0.000 GC (0.013 elapsed) :ghc>>
