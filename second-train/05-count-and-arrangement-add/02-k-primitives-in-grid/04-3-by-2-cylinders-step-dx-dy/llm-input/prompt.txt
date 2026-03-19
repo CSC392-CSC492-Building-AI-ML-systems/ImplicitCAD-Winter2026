@@ -1,0 +1,1 @@
+Complete the arrangement: this should be a 3 by 2 grid of identical cylinders. Each cylinder has radius 0.9, height 5, and base centers at [-6,-2,0], [0,-2,0], [6,-2,0], [-6,3,0], [0,3,0], and [6,3,0]. The cylinder at [6,-2,0] is missing. Add the missing cylinder.

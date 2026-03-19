@@ -1,0 +1,3 @@
+3D
+union [translate (V3 0.0 0.0 0.0) (extrude 4.0 (circle 1.0)),translate (V3 0.0 4.0 0.0) (extrude 4.0 (circle 1.0)),translate (V3 0.0 12.0 0.0) (extrude 4.0 (circle 1.0))]
+<<ghc: 84774688 bytes, 12 GCs, 576014/970560 avg/max bytes residency (4 samples), 44M in use, 0.003 INIT (0.003 elapsed), 0.027 MUT (0.013 elapsed), 0.001 GC (0.004 elapsed) :ghc>>

@@ -1,0 +1,5 @@
+union() {
+	translate([2, 0, 0]) sphere(r=1.25);
+	translate([2, 0, 4]) sphere(r=1.25);
+	translate([2, 0, 8]) sphere(r=1.25);
+}

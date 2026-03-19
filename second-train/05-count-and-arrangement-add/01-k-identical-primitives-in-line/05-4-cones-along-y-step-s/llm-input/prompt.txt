@@ -1,0 +1,1 @@
+Complete the arrangement: this should be a line of 4 identical cones along the y axis. Each cone is modeled as cylinder(r1=1.5, r2=0, h=4), uses base-center placement, and the base centers are [2,-6,0], [2,-2,0], [2,2,0], and [2,6,0]. The cone at [2,6,0] is missing. Add the missing cone.

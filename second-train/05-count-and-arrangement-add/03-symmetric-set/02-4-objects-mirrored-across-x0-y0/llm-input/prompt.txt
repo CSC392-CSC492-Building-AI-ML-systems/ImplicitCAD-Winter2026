@@ -1,0 +1,1 @@
+Complete the arrangement: this scene should contain 4 identical spheres arranged in the four quadrants, mirrored across both x=0 and y=0. Each sphere has radius 1 and centers at [-4,-4,1.5], [4,-4,1.5], [-4,4,1.5], and [4,4,1.5]. The sphere at [4,4,1.5] is missing. Add the missing sphere.

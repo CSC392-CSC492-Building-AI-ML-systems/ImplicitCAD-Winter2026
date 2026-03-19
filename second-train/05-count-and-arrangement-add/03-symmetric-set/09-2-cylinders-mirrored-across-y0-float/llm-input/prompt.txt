@@ -1,0 +1,1 @@
+Complete the arrangement: this scene should contain 2 identical cylinders mirrored across y=0 with floating-point coordinates. Each cylinder has radius 0.8, height 3.6, and one base center is [1.5,-2.75,0.0]. Add the mirrored cylinder.

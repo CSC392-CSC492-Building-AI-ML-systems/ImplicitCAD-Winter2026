@@ -1,0 +1,1 @@
+Complete the arrangement: this scene should contain 2 identical spheres mirrored across x=0 with floating-point coordinates. One sphere of radius 1.05 is centered at [-2.75,1.5,0.75]. Add its mirrored counterpart.

@@ -1,0 +1,1 @@
+Complete the arrangement: this should be a 4 by 2 grid of identical cone-like frustums. Each primitive is cylinder(r1=1.0, r2=0.3, h=3) with base centers at [-6,0,0], [-2,0,0], [2,0,0], [6,0,0], [-6,5,0], [-2,5,0], [2,5,0], and [6,5,0]. The frustum at [2,5,0] is missing. Add the missing primitive.

@@ -1,0 +1,1 @@
+Add a frustum-like cone with floating-point radii and base-center coordinates. Keep the existing geometry unchanged. Add one frustum with r1=2.75, r2=1.1, h=6.25, and base center [-1.5,4.25,0.5].

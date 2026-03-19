@@ -1,0 +1,1 @@
+Complete the arrangement: this should be a 3 by 3 grid of cylinders with floating-point base centers. Each cylinder has radius 0.7 and height 2.8. Base centers are [-4.5,-4.5,0.0], [0.0,-4.5,0.0], [4.5,-4.5,0.0], [-4.5,0.0,0.0], [0.0,0.0,0.0], [4.5,0.0,0.0], [-4.5,4.5,0.0], [0.0,4.5,0.0], and [4.5,4.5,0.0]. The center cylinder is missing. Add the missing cylinder.

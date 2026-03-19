@@ -1,0 +1,1 @@
+Complete the arrangement: this should be a line of 4 identical cubes along the x axis. Each cube has size [2,2,2], uses corner placement, and the cube origins are spaced by 4 units at [0,0,0], [4,0,0], [8,0,0], and [12,0,0]. One cube is missing at the end. Add the missing cube.

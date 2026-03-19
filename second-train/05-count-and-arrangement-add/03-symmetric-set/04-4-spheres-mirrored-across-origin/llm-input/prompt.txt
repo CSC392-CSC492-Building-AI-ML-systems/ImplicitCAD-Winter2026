@@ -1,0 +1,1 @@
+Complete the arrangement: this scene should contain 4 identical spheres forming an origin-centered symmetric set. Each sphere has radius 1.1 and centers at [-6,-2,1.5], [6,-2,1.5], [-6,2,1.5], and [6,2,1.5]. The sphere at [6,2,1.5] is missing. Add the missing sphere.

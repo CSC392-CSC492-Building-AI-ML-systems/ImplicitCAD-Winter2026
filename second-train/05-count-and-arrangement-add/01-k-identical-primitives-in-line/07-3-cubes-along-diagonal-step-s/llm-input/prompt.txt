@@ -1,0 +1,1 @@
+Complete the arrangement: this should be a diagonal line of 3 identical cubes on the XY plane. Each cube has size [2,2,2], uses corner placement, and the origins are [0,0,0], [4,4,0], and [8,8,0]. The middle cube on the diagonal is missing. Add the missing cube.

@@ -1,0 +1,1 @@
+Complete the arrangement: this scene should contain 2 identical cylinders mirrored across the plane y=0. Each cylinder has radius 1, height 5, and base center x=3, z=0. One cylinder is already at [3,-5,0]. Add the mirrored cylinder.

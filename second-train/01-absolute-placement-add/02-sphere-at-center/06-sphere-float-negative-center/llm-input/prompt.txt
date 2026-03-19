@@ -1,0 +1,1 @@
+Add a sphere with negative floating-point center coordinates. Keep the existing geometry unchanged. Add one sphere centered at [-4.25,-3.75,1.5] with radius 0.95.

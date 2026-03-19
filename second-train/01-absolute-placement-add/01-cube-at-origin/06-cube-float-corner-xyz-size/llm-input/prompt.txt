@@ -1,0 +1,1 @@
+Add a cube with floating-point corner coordinates and size. Keep the existing geometry unchanged. Add one cube with corner at [1.25,-2.5,0.75] and size [2.5,3.75,1.25] using center=false.

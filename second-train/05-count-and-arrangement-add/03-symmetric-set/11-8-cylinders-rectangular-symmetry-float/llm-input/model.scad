@@ -1,0 +1,9 @@
+union() {
+  translate([-6.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([-6.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([-2.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([-2.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([2.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([2.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([6.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+}

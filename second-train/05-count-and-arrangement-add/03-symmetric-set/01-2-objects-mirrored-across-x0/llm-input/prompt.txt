@@ -1,0 +1,1 @@
+Complete the arrangement: this scene should contain 2 identical spheres mirrored across the plane x=0. One sphere of radius 1.4 is centered at [-5,0,2]. Add its mirrored counterpart.

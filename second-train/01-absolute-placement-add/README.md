@@ -12,11 +12,15 @@ This section validates whether a model can add new primitives using explicit wor
 - `01-cube-at-origin`: cube placement from corner and center specifications
 - `02-sphere-at-center`: sphere placement by radius and center point
 - `03-cylinder-at-base-center`: cylinder and tapered cylinder placement by base-center coordinates
+- `04-cone-at-base`: cone and frustum placement by base-center coordinates
+- `05-torus-at-center`: torus-labeled proxy placement tasks
+- `06-polygon-extrude`: polygon and hexagon extrusion placement tasks
 
 ## Key Learning Points
 - Distinguishing absolute coordinates from object-anchored coordinates
 - Correct interpretation of primitive parameter conventions in ImplicitCAD
 - Stable translation math for center-to-corner conversion when needed
+- Handling floating-point coordinates, radii, and dimensions precisely
 
 ## Validation Structure
 Following section 03's validation approach, each test includes:
@@ -34,4 +38,4 @@ Following section 03's validation approach, each test includes:
 - **README.md**: problem description and validation guidance (leaf-level tasks only)
 
 ## Expected Result
-A complete set of absolute-placement training cases with validation artifacts (STL, SDF, admesh) following section 03's structure.
+A complete set of 30 absolute-placement training cases, including integer and floating-point variants, with validation artifacts (STL, SDF, admesh) following section 03's structure.

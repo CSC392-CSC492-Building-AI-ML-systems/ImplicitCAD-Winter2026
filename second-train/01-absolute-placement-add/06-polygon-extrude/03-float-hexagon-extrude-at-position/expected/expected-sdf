@@ -1,0 +1,3 @@
+3D
+union [translate (V3 (-4.0) (-1.0) 0.0) (withRounding 0.0 (translate (V3 0.0 0.0 0.0) (cube False (V3 3.5 3.5 2.0)))),translate (V3 2.5 1.75 0.0) (withRounding 0.0 (extrude 3.75 (polygon [V2 1.85 0.0,V2 0.9250000000000003 1.6021469970012114,V2 (-0.9249999999999997) 1.6021469970012117,V2 (-1.85) 2.2655965784226036e-16,V2 (-0.9250000000000008) (-1.602146997001211),V2 0.9250000000000003 (-1.6021469970012114)])))]
+<<ghc: 266547280 bytes, 18 GCs, 634161/1104120 avg/max bytes residency (5 samples), 44M in use, 0.003 INIT (0.003 elapsed), 0.088 MUT (0.026 elapsed), 0.001 GC (0.007 elapsed) :ghc>>

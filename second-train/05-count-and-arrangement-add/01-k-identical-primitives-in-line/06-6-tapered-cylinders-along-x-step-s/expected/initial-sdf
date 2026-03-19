@@ -1,0 +1,3 @@
+3D
+union [translate (V3 0.0 10.0 0.0) (cylinder2 1.2 0.6 3.0),translate (V3 3.0 10.0 0.0) (cylinder2 1.2 0.6 3.0),translate (V3 6.0 10.0 0.0) (cylinder2 1.2 0.6 3.0),translate (V3 9.0 10.0 0.0) (cylinder2 1.2 0.6 3.0),translate (V3 15.0 10.0 0.0) (cylinder2 1.2 0.6 3.0)]
+<<ghc: 124944720 bytes, 15 GCs, 626644/1116808 avg/max bytes residency (4 samples), 44M in use, 0.003 INIT (0.003 elapsed), 0.037 MUT (0.018 elapsed), 0.003 GC (0.005 elapsed) :ghc>>

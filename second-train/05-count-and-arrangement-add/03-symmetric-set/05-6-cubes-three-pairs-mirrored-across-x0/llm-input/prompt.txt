@@ -1,0 +1,1 @@
+Complete the arrangement: this scene should contain 6 identical cubes arranged as 3 mirrored pairs across x=0. Each cube has size [2,2,2] and uses corner placement. The left-side cube origins are [-6,-4,0], [-6,0,0], and [-6,4,0]. Their mirrored right-side counterparts should be [4,-4,0], [4,0,0], and [4,4,0]. The cube at [4,0,0] is missing. Add the missing cube.

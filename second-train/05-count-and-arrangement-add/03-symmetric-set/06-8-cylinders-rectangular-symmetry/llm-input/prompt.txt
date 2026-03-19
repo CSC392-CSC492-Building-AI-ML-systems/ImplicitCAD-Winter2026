@@ -1,0 +1,1 @@
+Complete the arrangement: this scene should contain 8 identical cylinders in a rectangular layout symmetric across both x=0 and y=0. Each cylinder has radius 0.8, height 4, and base centers at [-8,-3,0], [-8,3,0], [-4,-3,0], [-4,3,0], [4,-3,0], [4,3,0], [8,-3,0], and [8,3,0]. The cylinder at [8,3,0] is missing. Add the missing cylinder.

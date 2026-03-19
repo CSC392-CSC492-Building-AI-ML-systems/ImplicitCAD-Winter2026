@@ -1,0 +1,1 @@
+Add a polygon extrusion with floating-point translation and radius values. Keep the existing geometry unchanged. Add a hexagon-like extrusion at [2.5,1.75,0.0] using circle(r=1.85, $fn=6) and linear_extrude(height=3.75).

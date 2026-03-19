@@ -1,0 +1,3 @@
+3D
+union [translate (V3 (-3.5) (-3.5) 0.0) (withRounding 0.0 (translate (V3 0.0 0.0 0.0) (cube False (V3 3.0 3.0 3.0)))),translate (V3 2.2 3.4 0.0) (cylinder2 1.8 0.0 4.6)]
+<<ghc: 55628992 bytes, 7 GCs, 339188/530552 avg/max bytes residency (2 samples), 42M in use, 0.003 INIT (0.003 elapsed), 0.015 MUT (0.009 elapsed), 0.001 GC (0.002 elapsed) :ghc>>

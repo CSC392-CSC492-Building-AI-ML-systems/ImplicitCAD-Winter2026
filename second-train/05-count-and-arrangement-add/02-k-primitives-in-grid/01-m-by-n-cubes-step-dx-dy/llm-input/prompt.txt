@@ -1,0 +1,1 @@
+Complete the arrangement: this should be a 3 by 2 grid of cubes on the XY plane. Each cube has size [2,2,2], uses corner placement, and origins are spaced by dx=4 and dy=4. The six target origins are [0,0,0], [4,0,0], [8,0,0], [0,4,0], [4,4,0], and [8,4,0]. The cube at [4,4,0] is missing. Add the missing cube.

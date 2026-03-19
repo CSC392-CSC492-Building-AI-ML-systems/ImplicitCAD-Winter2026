@@ -6,12 +6,17 @@ This group focuses on absolute cylinder placement tasks using base-center coordi
 ## Included Tests
 - `01-cylinder-r-h-base-center-xyz`: standard cylinder with explicit `r`, `h`, and base center coordinates
 - `02-tapered-cylinder-r1-r2-h-base-center-xyz`: tapered cylinder with explicit `r1`, `r2`, `h`, and base center coordinates
+- `03-elliptical-cylinder-rx-ry-h`: scaled cylinder variant
+- `04-tall-thin-cylinder`: tall narrow cylinder placement case
+- `05-cylinder-float-r-h-base-center-xyz`: cylinder placement using floating-point values
+- `06-tapered-cylinder-float-r1-r2-h-base-center-xyz`: tapered cylinder placement using floating-point values
 
 ## Key Learning Points
 - Base-center semantics for `cylinder(..., center=false)`
 - Distinction between regular and tapered cylinder parameterization
 - Axis-aligned placement with explicit z-origin for height extrusion
 - Proper handling of non-uniform radius tapers
+- Maintaining precision for floating-point radii, heights, and base-center coordinates
 
 ## Validation Structure
 Each test includes:
@@ -26,4 +31,4 @@ Each test includes:
   - `expected-sdf`: symbolic description of expected result
 
 ## Expected Result
-Each test should add exactly one cylinder primitive at the requested base-center position and dimensions.
+Each test should add exactly one cylinder primitive at the requested base-center position and dimensions, including floating-point parameter cases.

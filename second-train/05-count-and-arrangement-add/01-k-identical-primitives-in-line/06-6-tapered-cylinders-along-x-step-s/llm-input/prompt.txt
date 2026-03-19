@@ -1,0 +1,1 @@
+Complete the arrangement: this should be a line of 6 identical tapered cylinders along the x axis. Each primitive is cylinder(r1=1.2, r2=0.6, h=3) with base centers at [0,10,0], [3,10,0], [6,10,0], [9,10,0], [12,10,0], and [15,10,0]. The tapered cylinder at [12,10,0] is missing. Add the missing primitive.

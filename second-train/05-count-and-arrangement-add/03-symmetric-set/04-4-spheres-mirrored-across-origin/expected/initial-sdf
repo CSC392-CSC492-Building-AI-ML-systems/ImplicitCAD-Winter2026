@@ -1,0 +1,3 @@
+3D
+union [translate (V3 (-6.0) (-2.0) 1.5) (sphere 1.1),translate (V3 6.0 (-2.0) 1.5) (sphere 1.1),translate (V3 (-6.0) 2.0 1.5) (sphere 1.1)]
+<<ghc: 59654744 bytes, 7 GCs, 411058/544248 avg/max bytes residency (3 samples), 43M in use, 0.005 INIT (0.004 elapsed), 0.021 MUT (0.010 elapsed), 0.000 GC (0.002 elapsed) :ghc>>

@@ -1,0 +1,1 @@
+Add the torus-style proxy primitive using floating-point placement. Keep the existing geometry unchanged. Add one proxy torus primitive centered near [3.5,-2.5,1.25] using a tapered cylinder approximation with r1=2.6, r2=1.2, h=2.75.

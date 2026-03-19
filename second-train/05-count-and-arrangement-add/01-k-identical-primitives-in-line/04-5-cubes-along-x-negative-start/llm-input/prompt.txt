@@ -1,0 +1,1 @@
+Complete the arrangement: this should be a line of 5 identical cubes along the x axis. Each cube has size [1.5,1.5,1.5], uses corner placement, and the origins are [-8,2,0], [-4,2,0], [0,2,0], [4,2,0], and [8,2,0]. The center cube at [0,2,0] is missing. Add the missing cube.

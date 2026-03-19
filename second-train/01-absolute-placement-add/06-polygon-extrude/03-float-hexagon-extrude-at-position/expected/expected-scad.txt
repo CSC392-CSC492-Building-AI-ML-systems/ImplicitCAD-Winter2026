@@ -1,0 +1,4 @@
+union() {
+  translate([-4.0, -1.0, 0.0]) cube(size=[3.5,3.5,2.0], center=false);
+  translate([2.5, 1.75, 0.0]) linear_extrude(height=3.75) circle(r=1.85, $fn=6);
+}

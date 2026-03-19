@@ -1,0 +1,1 @@
+Add a cube specified by floating-point center coordinates and floating-point size. Keep the existing geometry unchanged. Add one cube centered at [4.5,1.75,2.25] with size [1.5,2.5,3.5].

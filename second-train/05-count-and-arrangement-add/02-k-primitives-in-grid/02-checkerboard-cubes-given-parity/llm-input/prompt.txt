@@ -1,0 +1,1 @@
+Complete the arrangement: this should be a 4 by 4 checkerboard pattern of cubes keeping only the even-parity cells where row+column is even. Each cube has size [1.5,1.5,1.5], uses corner placement, and grid origins are multiples of 3 in x and y starting at [0,0,0]. The cube at [3,3,0] is missing from the parity pattern. Add the missing cube.

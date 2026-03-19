@@ -1,0 +1,1 @@
+Complete the arrangement: this should be a 3 by 2 grid of identical spheres. Each sphere has radius 1 and centers at [-4,0,1], [0,0,1], [4,0,1], [-4,4,1], [0,4,1], and [4,4,1]. The sphere at [0,4,1] is missing. Add the missing sphere.

@@ -1,0 +1,3 @@
+3D
+union [translate (V3 (-6.5) (-2.25) 0.0) (extrude 3.25 (circle 0.65)),translate (V3 (-6.5) 2.25 0.0) (extrude 3.25 (circle 0.65)),translate (V3 (-2.5) (-2.25) 0.0) (extrude 3.25 (circle 0.65)),translate (V3 (-2.5) 2.25 0.0) (extrude 3.25 (circle 0.65)),translate (V3 2.5 (-2.25) 0.0) (extrude 3.25 (circle 0.65)),translate (V3 2.5 2.25 0.0) (extrude 3.25 (circle 0.65)),translate (V3 6.5 (-2.25) 0.0) (extrude 3.25 (circle 0.65))]
+<<ghc: 65753544 bytes, 13 GCs, 437125/761864 avg/max bytes residency (3 samples), 43M in use, 0.003 INIT (0.003 elapsed), 0.021 MUT (0.014 elapsed), 0.002 GC (0.003 elapsed) :ghc>>

@@ -1,0 +1,1 @@
+Add a tapered cylinder with floating-point radii, height, and base-center coordinates. Keep the existing geometry unchanged. Add one cylinder with r1=2.4, r2=0.85, h=5.5, and base center [-3.25,2.75,0.25].
