@@ -2,6 +2,14 @@
 
 A web-based IDE for [ImplicitCAD](https://github.com/Haskell-Things/ImplicitCAD) — write OpenSCAD code, get instant 3D previews, and generate code with AI.
 
+## Model (LoRA)
+
+This project uses a LoRA adapter hosted on Hugging Face:
+
+👉 https://huggingface.co/Max2475/qwen3.5-27b-openscad-instruct-lora
+
+> Note: Model weights (~350MB) are hosted on Hugging Face due to GitHub size limits.
+
 ## Quick Start (Docker)
 
 ```bash
