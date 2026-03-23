@@ -181,6 +181,14 @@ LLM_COMMAND="llm"
 
 Set via `.env` or pass as an environment variable.
 
+## Screenshot
+
+Once installed, the web UI would look something like this:
+
+<picture>
+  <img src="https://i.imgur.com/OrnbKsd.png" alt="Description of the image" />
+</picture>
+
 ## License
 
 AGPL-3.0-or-later (same as ImplicitCAD)
