@@ -186,7 +186,7 @@ Set via `.env` or pass as an environment variable.
 Once installed, the web UI would look something like this:
 
 <picture>
-  <img src="https://i.imgur.com/OrnbKsd.png" alt="Description of the image" />
+  <img src="https://i.imgur.com/OrnbKsd.png" alt="Screenshot of the web UI once installed and running" />
 </picture>
 
 ## License
