@@ -110,22 +110,22 @@ detect_system() {
     return 1
   }
 
-  # Try each URL in priority order
+  # Try each URL in priority order (|| true prevents set -e from exiting on failure)
   if [ -n "${OLLAMA_URL:-}" ]; then
-    _try_ollama_url "$OLLAMA_URL"
+    _try_ollama_url "$OLLAMA_URL" || true
   fi
   if ! $OLLAMA_API_OK; then
-    _try_ollama_url "http://localhost:11434"
+    _try_ollama_url "http://localhost:11434" || true
   fi
   if ! $OLLAMA_API_OK; then
-    _try_ollama_url "http://host.docker.internal:11434"
+    _try_ollama_url "http://host.docker.internal:11434" || true
   fi
   if ! $OLLAMA_API_OK && [ "$OS_NAME" = "WSL2" ]; then
     # WSL: try Windows host IP from /etc/resolv.conf
     local win_ip
     win_ip=$(grep nameserver /etc/resolv.conf 2>/dev/null | head -1 | awk '{print $2}')
     if [ -n "$win_ip" ]; then
-      _try_ollama_url "http://${win_ip}:11434"
+      _try_ollama_url "http://${win_ip}:11434" || true
     fi
   fi
 
@@ -136,8 +136,13 @@ detect_system() {
 
   # HuggingFace CLI (needed for 9B/27B adapter downloads)
   HF_CLI_OK=false
-  if command -v huggingface-cli &>/dev/null || command -v hf &>/dev/null; then
+  HF_CMD=""
+  if command -v huggingface-cli &>/dev/null; then
     HF_CLI_OK=true
+    HF_CMD="huggingface-cli"
+  elif command -v hf &>/dev/null; then
+    HF_CLI_OK=true
+    HF_CMD="hf"
   fi
 }
 
@@ -333,14 +338,14 @@ download_adapter() {
   local repo="$2"
   local dir="$3"
 
-  if ! command -v huggingface-cli &>/dev/null; then
-    fail "huggingface-cli not found. Install: pip install huggingface-hub"
+  if ! $HF_CLI_OK; then
+    fail "HuggingFace CLI not found. Install: pip install huggingface-hub"
     return 1
   fi
 
   mkdir -p "$dir"
   echo -e "  Downloading ${W}${name}${D} adapter..."
-  if ! huggingface-cli download "$repo" --local-dir "$dir"; then
+  if ! $HF_CMD download "$repo" --local-dir "$dir"; then
     fail "Failed to download $name adapter"
     return 1
   fi
@@ -368,17 +373,22 @@ has_ollama_model() {
 
 show_model_status() {
   echo ""
-  echo -e "  ${W}Local Model Status${D}"
+  echo -e "  ${W}Model Status${D}"
   echo -e "  ${DIM}──────────────────────────────────────${D}"
 
-  if ! $OLLAMA_RUNNING; then
-    warn "Ollama not running. Status may be incomplete."
+  if ! $OLLAMA_API_OK && ! $OLLAMA_LOCAL; then
+    warn "Ollama not available. Cannot check model status."
     echo ""
     return
   fi
 
-  local models
-  models=$(ollama list 2>/dev/null || echo "")
+  # Get model list — use CLI if local, API if remote
+  local models=""
+  if $OLLAMA_LOCAL; then
+    models=$(ollama list 2>/dev/null || echo "")
+  elif $OLLAMA_API_OK; then
+    models=$(curl -s "${OLLAMA_URL_IN_USE}/api/tags" 2>/dev/null || echo "")
+  fi
 
   echo ""
   echo -e "  ${C}Base Models:${D}"
@@ -413,6 +423,11 @@ show_model_status() {
     echo -e "    ${DIM}○${D} 27B adapter ${DIM}(not downloaded)${D}"
   fi
   echo ""
+
+  if $OLLAMA_API_OK && ! $OLLAMA_LOCAL; then
+    echo -e "  ${DIM}Connected to: ${OLLAMA_URL_IN_USE}${D}"
+    echo ""
+  fi
 }
 
 # ── Docker Operations ────────────────────────────────────────────────────────
@@ -561,9 +576,9 @@ setup_9b() {
   echo -e "  ${DIM}and creates the implicitcad-9b app model.${D}"
   echo ""
 
-  # Pre-flight: check huggingface-cli before starting the long download
-  if ! command -v huggingface-cli &>/dev/null; then
-    fail "huggingface-cli is required for downloading LoRA adapters."
+  # Pre-flight: check HuggingFace CLI before starting the long download
+  if ! $HF_CLI_OK; then
+    fail "HuggingFace CLI is required for downloading LoRA adapters."
     echo -e "    Install: ${C}pip install huggingface-hub${D}"
     return
   fi
@@ -615,9 +630,9 @@ setup_27b() {
   echo -e "  ${DIM}and creates the implicitcad-27b app model. Requires 16GB+ RAM.${D}"
   echo ""
 
-  # Pre-flight: check huggingface-cli
-  if ! command -v huggingface-cli &>/dev/null; then
-    fail "huggingface-cli is required for downloading LoRA adapters."
+  # Pre-flight: check HuggingFace CLI
+  if ! $HF_CLI_OK; then
+    fail "HuggingFace CLI is required for downloading LoRA adapters."
     echo -e "    Install: ${C}pip install huggingface-hub${D}"
     return
   fi
