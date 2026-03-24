@@ -80,18 +80,25 @@ detect_system() {
     COMPOSE=""
   fi
 
-  # Ollama
+  # Ollama — check both local binary and network reachability
   OLLAMA_OK=false
   OLLAMA_VER="not found"
+  OLLAMA_LOCAL=false  # Binary installed locally (in WSL/macOS/Linux)
   if command -v ollama &>/dev/null; then
     OLLAMA_VER=$(ollama --version 2>/dev/null | awk '{print $NF}' || echo "installed")
     OLLAMA_OK=true
+    OLLAMA_LOCAL=true
   fi
 
-  # Ollama running?
+  # Ollama running? Check localhost (covers both local and Windows-host Ollama)
   OLLAMA_RUNNING=false
   if curl -s http://localhost:11434/api/tags &>/dev/null; then
     OLLAMA_RUNNING=true
+    # If reachable but not installed locally (e.g., Windows Ollama via WSL port forwarding)
+    if ! $OLLAMA_OK; then
+      OLLAMA_OK=true
+      OLLAMA_VER="remote"
+    fi
   fi
 
   # HuggingFace CLI (needed for 9B/27B adapter downloads)
@@ -112,8 +119,10 @@ show_header() {
   echo ""
   echo -e "  System:  ${W}${OS_NAME} ${ARCH_NAME}${D} | RAM: ${W}${RAM_GB}GB${D} | GPU: ${W}${GPU_INFO}${D}"
   echo -e "  Docker:  ${W}${DOCKER_VER}${D} | Ollama: ${W}${OLLAMA_VER}${D}"
-  if $OLLAMA_RUNNING; then
+  if $OLLAMA_RUNNING && $OLLAMA_LOCAL; then
     echo -e "  Ollama:  ${G}running${D}"
+  elif $OLLAMA_RUNNING && ! $OLLAMA_LOCAL; then
+    echo -e "  Ollama:  ${G}running (Windows host)${D}"
   elif $OLLAMA_OK; then
     echo -e "  Ollama:  ${Y}installed but not running${D}"
   else
@@ -188,6 +197,19 @@ ensure_ollama_running() {
     return 1
   fi
 
+  # If not installed locally (e.g., WSL without local ollama), guide user
+  if ! $OLLAMA_LOCAL; then
+    fail "Ollama is not running and not installed locally."
+    if [ "$OS_NAME" = "WSL2" ]; then
+      echo -e "    ${W}Option A:${D} Start the Ollama app on Windows, then re-run this script."
+      echo -e "    ${W}Option B:${D} Install Ollama in WSL: ${C}curl -fsSL https://ollama.com/install.sh | sh${D}"
+      echo -e "               ${DIM}(May need: sudo apt-get install zstd first)${D}"
+    else
+      echo -e "    Install: ${C}curl -fsSL https://ollama.com/install.sh | sh${D}"
+    fi
+    return 1
+  fi
+
   echo -e "  Starting Ollama..."
   ollama serve &>/dev/null &
   disown
@@ -210,10 +232,27 @@ ensure_ollama_running() {
 pull_model() {
   local model="$1"
   ensure_ollama_running || return 1
-  echo -e "  Pulling ${W}${model}${D}..."
-  if ! ollama pull "$model"; then
-    fail "Failed to pull $model"
-    return 1
+
+  if $OLLAMA_LOCAL; then
+    # Local binary available — use CLI
+    echo -e "  Pulling ${W}${model}${D}..."
+    if ! ollama pull "$model"; then
+      fail "Failed to pull $model"
+      return 1
+    fi
+  else
+    # Remote Ollama (e.g., Windows host) — use HTTP API
+    echo -e "  Pulling ${W}${model}${D} via API..."
+    echo -e "  ${DIM}This may take a while for large models. Progress shown below.${D}"
+    local http_code
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:11434/api/pull \
+      -H "Content-Type: application/json" \
+      -d "{\"name\": \"${model}\", \"stream\": false}" \
+      --max-time 600 2>&1) || true
+    if [ "$http_code" != "200" ]; then
+      fail "Failed to pull $model (HTTP $http_code)"
+      return 1
+    fi
   fi
   info "Pulled $model"
 }
@@ -228,10 +267,28 @@ create_model() {
     return 1
   fi
 
-  echo -e "  Creating ${W}${name}${D} from ${modelfile}..."
-  if ! ollama create "$name" -f "$modelfile"; then
-    fail "Failed to create $name"
-    return 1
+  if $OLLAMA_LOCAL; then
+    # Local binary available — use CLI
+    echo -e "  Creating ${W}${name}${D} from ${modelfile}..."
+    if ! ollama create "$name" -f "$modelfile"; then
+      fail "Failed to create $name"
+      return 1
+    fi
+  else
+    # Remote Ollama — use HTTP API with Modelfile content
+    echo -e "  Creating ${W}${name}${D} via API..."
+    local content
+    content=$(cat "$modelfile")
+    local http_code
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:11434/api/create \
+      -H "Content-Type: application/json" \
+      -d "{\"name\": \"${name}\", \"modelfile\": $(printf '%s' "$content" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'), \"stream\": false}" \
+      --max-time 300 2>&1) || true
+    if [ "$http_code" != "200" ]; then
+      fail "Failed to create $name (HTTP $http_code)"
+      echo -e "    ${DIM}Note: ADAPTER paths in the Modelfile must be accessible from the Ollama host.${D}"
+      return 1
+    fi
   fi
   info "Created $name"
 }
@@ -261,10 +318,15 @@ has_adapter() {
   [ -f "$dir/adapter_model.safetensors" ]
 }
 
-# Check if Ollama has a specific model
+# Check if Ollama has a specific model (works for both local and remote)
 has_ollama_model() {
   local model="$1"
-  ollama list 2>/dev/null | grep -q "$model"
+  if $OLLAMA_LOCAL; then
+    ollama list 2>/dev/null | grep -q "$model"
+  else
+    # Use API for remote Ollama (e.g., Windows host)
+    curl -s http://localhost:11434/api/tags 2>/dev/null | grep -q "\"$model"
+  fi
 }
 
 # ── Model Status ─────────────────────────────────────────────────────────────
