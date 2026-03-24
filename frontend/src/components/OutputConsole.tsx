@@ -43,14 +43,14 @@ export function OutputConsole() {
       <div ref={containerRef} onScroll={checkNearBottom} className="flex-1 px-3.5 py-2 font-mono text-[11px] leading-[1.7] text-text-secondary overflow-y-auto">
         {logs.map((entry) => (
           <div key={entry.id} className={`py-px ${levelColor[entry.level]}`}>
-            [{entry.time}] {entry.message}
+            <span className="text-text-faint">[{entry.time}]</span> {entry.message}
           </div>
         ))}
       </div>
       {hasNewLogs && !isNearBottom && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-accent text-white rounded-full shadow-md hover:bg-accent-hover transition-colors"
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[var(--z-panel)] flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-accent text-white rounded-full shadow-md hover:bg-accent-hover transition-colors"
         >
           <ArrowDown size={12} /> New logs
         </button>

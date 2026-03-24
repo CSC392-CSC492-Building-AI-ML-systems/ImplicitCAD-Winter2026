@@ -157,7 +157,7 @@ export function CommandPalette({ onRender }: CommandPaletteProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm"
+      className="fixed inset-0 z-[var(--z-modal)] bg-black/30 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) close() }}
     >
       <div

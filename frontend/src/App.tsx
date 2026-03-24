@@ -13,7 +13,7 @@ import { useLayoutStore, type ZoneId } from './stores/layoutStore'
 import { useFileTreeStore } from './stores/fileTreeStore'
 import { useRender } from './hooks/useRender'
 
-const separatorH = "h-[6px] flex items-center justify-center bg-border-subtle hover:bg-accent transition-colors cursor-row-resize group z-10 relative"
+const separatorH = "h-1.5 flex items-center justify-center bg-border-subtle hover:bg-accent transition-colors cursor-row-resize group z-[var(--z-panel)] relative"
 const separatorDot = "w-8 h-1 rounded-full bg-border-strong group-hover:bg-white/50 transition-colors"
 
 /* ── Empty zone drop strip ─────────────────────────────────────────── */
@@ -104,7 +104,7 @@ function SmallViewportFallback() {
   if (!tooSmall) return null
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-bg-base flex flex-col items-center justify-center gap-5 px-8 text-center">
+    <div className="fixed inset-0 z-[var(--z-viewport-block)] bg-bg-base flex flex-col items-center justify-center gap-5 px-8 text-center">
       <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center text-white font-bold text-sm tracking-tight">
         IC
       </div>
@@ -296,7 +296,7 @@ export default function App() {
             )}
           </Panel>
 
-          <Separator className="w-[6px] flex flex-col items-center justify-center bg-border-subtle hover:bg-accent transition-colors cursor-col-resize group z-10 relative"><div className="h-8 w-1 rounded-full bg-border-strong group-hover:bg-white/50 transition-colors" /></Separator>
+          <Separator className="w-1.5 flex flex-col items-center justify-center bg-border-subtle hover:bg-accent transition-colors cursor-col-resize group z-[var(--z-panel)] relative"><div className="h-8 w-1 rounded-full bg-border-strong group-hover:bg-white/50 transition-colors" /></Separator>
 
           {/* Right column */}
           <Panel defaultSize={50} minSize={30}>

@@ -21,16 +21,6 @@ function parseErrors(text: string): EditorError[] {
   return results
 }
 
-function getQualityValue(sliderVal: number): number | null {
-  if (sliderVal === 50) return null
-  if (sliderVal < 50) {
-    const t = sliderVal / 50
-    return +Number(0.05 * Math.pow(0.9 / 0.05, t)).toFixed(3)
-  }
-  const t = (sliderVal - 50) / 50
-  return +Number(1.0 * Math.pow(10 / 1.0, t)).toFixed(2)
-}
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const win = window as any
 
@@ -44,15 +34,16 @@ export function useRender() {
 
   const compileSTL = useCallback(
     async (code: string) => {
+      // Save current settings so they can be reverted on cancel
+      useViewerStore.getState().savePrevSettings()
+
+      const controller = new AbortController()
+      useViewerStore.getState().setAbortController(controller)
       setRendering(true)
       log('Compiling...', 'info')
 
-      const { resolution, fnSegments, compilerResolution, compatMode } = useViewerStore.getState()
-      const quality = getQualityValue(resolution)
+      const { fnSegments, compilerResolution, compatMode } = useViewerStore.getState()
       let processedCode = code
-      if (quality != null && !/\$quality\s*=/.test(code)) {
-        processedCode = `$quality = ${quality};\n${processedCode}`
-      }
       if (fnSegments != null && !/\$fn\s*=/.test(code)) {
         processedCode = `$fn = ${fnSegments};\n${processedCode}`
       }
@@ -66,6 +57,7 @@ export function useRender() {
             resolution: compilerResolution,
             compatMode,
           }),
+          signal: controller.signal,
         })
 
         if (!resp.ok) {
@@ -98,10 +90,15 @@ export function useRender() {
         log(`Compiled (${(buf.byteLength / 1024).toFixed(1)} KB, ${geometry.attributes.position.count / 3} faces)`, 'success')
         useEditorStore.getState().setErrors([])
       } catch (e: unknown) {
-        log(`Connection error: ${e instanceof Error ? e.message : e}`, 'error')
+        if (e instanceof DOMException && e.name === 'AbortError') {
+          log('Compilation cancelled', 'warning')
+        } else {
+          log(`Connection error: ${e instanceof Error ? e.message : e}`, 'error')
+        }
         useEditorStore.getState().setErrors([])
       } finally {
         setRendering(false)
+        useViewerStore.getState().setAbortController(null)
       }
     },
     [log, setGeometry, setLastStlBlob, setRendering],
@@ -112,12 +109,6 @@ export function useRender() {
       if (jsonpTimeoutRef.current) clearTimeout(jsonpTimeoutRef.current)
       setRendering(true)
       log('Rendering via implicitsnap...', 'info')
-
-      const { resolution } = useViewerStore.getState()
-      const quality = getQualityValue(resolution)
-      const codeWithQuality = quality != null && !/\$quality\s*=/.test(code)
-        ? `$quality = ${quality};\n${code}`
-        : code
 
       const cbName = 'icad_cb_' + Date.now()
 
@@ -176,7 +167,7 @@ export function useRender() {
       const old = document.getElementById('jsonp-script')
       if (old) old.remove()
 
-      const url = `/render/?source=${encodeURIComponent(codeWithQuality)}&callback=${cbName}&format=jsTHREE`
+      const url = `/render/?source=${encodeURIComponent(code)}&callback=${cbName}&format=jsTHREE`
       const script = document.createElement('script')
       script.id = 'jsonp-script'
       script.src = url

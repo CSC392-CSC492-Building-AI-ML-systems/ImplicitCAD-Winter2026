@@ -35,6 +35,18 @@
 
 @layer base {
   :root {
+    /* Z-index scale */
+    --z-panel: 10;
+    --z-panel-overlay: 20;
+    --z-header: 30;
+    --z-statusbar: 30;
+    --z-dropdown: 40;
+    --z-modal: 50;
+    --z-viewport-block: 9999;
+
+    /* Component tokens */
+    --switch-knob: #FFFFFF;
+
     --bg-base: #FFFFFF;
     --bg-surface: #F8FAFC;
     --bg-raised: #F1F5F9;
@@ -59,6 +71,15 @@
   }
 
   .dark {
+    --z-panel: 10;
+    --z-panel-overlay: 20;
+    --z-header: 30;
+    --z-statusbar: 30;
+    --z-dropdown: 40;
+    --z-modal: 50;
+    --z-viewport-block: 9999;
+    --switch-knob: #FFFFFF;
+
     --bg-base: #0B0F19;
     --bg-surface: #111827;
     --bg-raised: #1E293B;

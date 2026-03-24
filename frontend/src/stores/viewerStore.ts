@@ -32,7 +32,6 @@ interface ViewerState {
   gridXY: boolean
   gridXZ: boolean
   gridYZ: boolean
-  resolution: number
   backendMode: 'implicitsnap' | 'docker' | null
   cameraRef: PerspectiveCamera | null
   controlsRef: { target: Vector3; update: () => void } | null
@@ -40,6 +39,10 @@ interface ViewerState {
   compilerResolution: string
   compatMode: boolean
   validation: AdmeshValidation | null
+  modelName: string
+  autoDownload: boolean
+  abortController: AbortController | null
+  prevSettings: { compilerResolution: string; fnSegments: number | null; compatMode: boolean } | null
   setGeometry: (g: BufferGeometry | null) => void
   setLastStlBlob: (b: Blob | null) => void
   setRendering: (v: boolean) => void
@@ -48,7 +51,6 @@ interface ViewerState {
   toggleGridXY: () => void
   toggleGridXZ: () => void
   toggleGridYZ: () => void
-  setResolution: (v: number) => void
   setBackendMode: (m: 'implicitsnap' | 'docker' | null) => void
   setCameraRef: (c: PerspectiveCamera | null) => void
   setControlsRef: (c: { target: Vector3; update: () => void } | null) => void
@@ -57,6 +59,12 @@ interface ViewerState {
   setCompilerResolution: (v: string) => void
   setCompatMode: (v: boolean) => void
   setValidation: (v: AdmeshValidation | null) => void
+  setModelName: (v: string) => void
+  setAutoDownload: (v: boolean) => void
+  setAbortController: (c: AbortController | null) => void
+  cancelRender: () => void
+  savePrevSettings: () => void
+  revertSettings: () => void
 }
 
 export const useViewerStore = create<ViewerState>((set, get) => ({
@@ -69,7 +77,6 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   gridXY: true,
   gridXZ: false,
   gridYZ: false,
-  resolution: 50,
   backendMode: null,
   cameraRef: null,
   controlsRef: null,
@@ -77,6 +84,10 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   compilerResolution: '2',
   compatMode: true,
   validation: null,
+  modelName: localStorage.getItem('implicitcad-model-name') || 'model',
+  autoDownload: localStorage.getItem('implicitcad-auto-download') !== 'false',
+  abortController: null,
+  prevSettings: null,
 
   setGeometry: (geometry) => {
     let modelInfo: ModelInfo | null = null
@@ -112,7 +123,6 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
     const next = !s.gridYZ
     return { gridYZ: next, showGrid: next || s.gridXY || s.gridXZ }
   }),
-  setResolution: (resolution) => set({ resolution }),
   setBackendMode: (backendMode) => set({ backendMode }),
   setCameraRef: (cameraRef) => set({ cameraRef }),
   setControlsRef: (controlsRef) => set({ controlsRef }),
@@ -120,6 +130,24 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   setCompilerResolution: (compilerResolution) => set({ compilerResolution }),
   setCompatMode: (compatMode) => set({ compatMode }),
   setValidation: (validation) => set({ validation }),
+  setModelName: (modelName) => { localStorage.setItem('implicitcad-model-name', modelName); set({ modelName }) },
+  setAutoDownload: (autoDownload) => { localStorage.setItem('implicitcad-auto-download', String(autoDownload)); set({ autoDownload }) },
+  setAbortController: (abortController) => set({ abortController }),
+  cancelRender: () => {
+    const { abortController } = get()
+    if (abortController) abortController.abort()
+    set({ isRendering: false, abortController: null })
+  },
+  savePrevSettings: () => {
+    const { compilerResolution, fnSegments, compatMode } = get()
+    set({ prevSettings: { compilerResolution, fnSegments, compatMode } })
+  },
+  revertSettings: () => {
+    const { prevSettings } = get()
+    if (prevSettings) {
+      set({ compilerResolution: prevSettings.compilerResolution, fnSegments: prevSettings.fnSegments, compatMode: prevSettings.compatMode, prevSettings: null })
+    }
+  },
 
   setCameraPreset: (preset) => {
     const { cameraRef: cam, controlsRef: ctrl, geometry } = get()

@@ -279,7 +279,7 @@ export function ChatPanel() {
           <select
             value={activeProvider || ''}
             onChange={(e) => handleProviderChange(e.target.value)}
-            className="text-xs bg-bg-base border border-border-default rounded-md px-2 py-1 text-text-primary outline-none focus:border-ai"
+            className="text-xs bg-bg-base border border-border-default rounded-md px-2 py-1 text-text-primary outline-none transition-all duration-150 hover:bg-bg-raised hover:border-border-strong focus-visible:border-ai focus-visible:ring-2 focus-visible:ring-ai-dim cursor-pointer"
           >
             {PROVIDERS.map(p => (
               <option key={p.value} value={p.value}>{p.label}</option>
@@ -288,7 +288,7 @@ export function ChatPanel() {
           <select
             value={activeModel || ''}
             onChange={(e) => handleModelChange(e.target.value)}
-            className="text-xs bg-bg-base border border-border-default rounded-md px-2 py-1 text-text-primary outline-none focus:border-ai max-w-[160px]"
+            className="text-xs bg-bg-base border border-border-default rounded-md px-2 py-1 text-text-primary outline-none transition-all duration-150 hover:bg-bg-raised hover:border-border-strong focus-visible:border-ai focus-visible:ring-2 focus-visible:ring-ai-dim cursor-pointer max-w-[160px]"
           >
             {availableModels.map(m => (
               <option key={m} value={m}>{m}</option>
@@ -367,7 +367,7 @@ export function ChatPanel() {
             <div className="text-[11px] font-semibold uppercase tracking-wide px-0.5 text-ai">
               AI Assistant
             </div>
-            <div className="px-3 py-2 rounded-[10px] text-sm leading-relaxed bg-ai-dim border border-ai/15 text-text-primary rounded-bl-sm">
+            <div className="px-3 py-2 rounded-xl text-sm leading-relaxed bg-ai-dim border border-ai/15 text-text-primary rounded-bl-sm">
               <div className="whitespace-pre-wrap font-mono text-[11px]">
                 {streamingText}
                 <span className="inline-block w-[2px] h-[14px] bg-ai ml-0.5 animate-pulse" />
@@ -391,7 +391,7 @@ export function ChatPanel() {
       {hasNewMessages && !isNearBottom && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-[70px] left-1/2 -translate-x-1/2 flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-ai text-white rounded-full shadow-md hover:brightness-110 transition-colors z-10"
+          className="absolute bottom-[70px] left-1/2 -translate-x-1/2 flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-ai text-white rounded-full shadow-md hover:brightness-110 transition-colors z-[var(--z-panel)]"
         >
           <ArrowDown size={12} /> New messages
         </button>
@@ -407,13 +407,13 @@ export function ChatPanel() {
           placeholder="Describe a 3D model..."
           rows={1}
           aria-label="Chat message input"
-          className="flex-1 px-3 py-2 bg-bg-base border border-border-default rounded-[10px] text-text-primary text-sm font-[var(--font-ui)] resize-none outline-none min-h-[38px] max-h-[100px] transition-all focus-visible:border-ai focus-visible:ring-2 focus-visible:ring-ai-dim placeholder:text-text-faint"
+          className="flex-1 px-3 py-2 bg-bg-base border border-border-default rounded-xl text-text-primary text-sm font-[var(--font-ui)] resize-none outline-none min-h-[38px] max-h-[100px] transition-all focus-visible:border-ai focus-visible:ring-2 focus-visible:ring-ai-dim placeholder:text-text-faint"
         />
         <button
           onClick={send}
           disabled={isLoading || !input.trim()}
           aria-label="Send message"
-          className="w-[38px] h-[38px] flex items-center justify-center bg-ai text-white rounded-[10px] shrink-0 transition-all hover:brightness-110 hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-[38px] h-[38px] flex items-center justify-center bg-ai text-white rounded-xl shrink-0 transition-all hover:brightness-110 hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Send size={16} />
         </button>
@@ -435,7 +435,7 @@ function MessageBubble({ msg, onReview, onCopy, hasPendingDiff }: {
       <div className={`text-[11px] font-semibold uppercase tracking-wide px-0.5 ${isUser ? 'text-text-muted' : 'text-ai'}`}>
         {isUser ? 'You' : 'AI Assistant'}
       </div>
-      <div className={`px-3 py-2 rounded-[10px] text-sm leading-relaxed ${
+      <div className={`px-3 py-2 rounded-xl text-sm leading-relaxed ${
         isUser
           ? 'bg-bg-raised border border-border-default text-text-primary rounded-br-sm'
           : 'bg-ai-dim border border-ai/15 text-text-primary rounded-bl-sm'

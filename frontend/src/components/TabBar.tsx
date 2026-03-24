@@ -175,8 +175,7 @@ export function TabBar({ zone, actions }: TabBarProps) {
       {/* First-visit drag tooltip */}
       {showDragTip && (
         <div
-          className="absolute top-full left-4 mt-1 z-50 px-3 py-1.5 bg-bg-raised border border-border-default rounded-md shadow-md text-[11px] text-text-secondary whitespace-nowrap cursor-pointer"
-          style={{ animation: 'dropIn 0.15s ease' }}
+          className="absolute top-full left-4 mt-1 z-[var(--z-dropdown)] px-3 py-1.5 bg-bg-raised border border-border-default rounded-md shadow-md text-[11px] text-text-secondary whitespace-nowrap cursor-pointer animate-drop-in"
           onClick={() => { setShowDragTip(false); localStorage.setItem(DRAG_TIP_KEY, '1') }}
         >
           <div className="absolute -top-1 left-6 w-2 h-2 bg-bg-raised border-l border-t border-border-default rotate-45" />

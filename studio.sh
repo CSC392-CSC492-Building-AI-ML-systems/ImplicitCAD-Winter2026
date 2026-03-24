@@ -14,6 +14,7 @@ W='\033[1;37m'
 M='\033[0;35m'
 D='\033[0m'
 DIM='\033[2m'
+B='\033[1m'
 
 info()  { echo -e "  ${G}✓${D} $1"; }
 warn()  { echo -e "  ${Y}!${D} $1"; }
@@ -92,6 +93,12 @@ detect_system() {
   if curl -s http://localhost:11434/api/tags &>/dev/null; then
     OLLAMA_RUNNING=true
   fi
+
+  # HuggingFace CLI (needed for 9B/27B adapter downloads)
+  HF_CLI_OK=false
+  if command -v huggingface-cli &>/dev/null; then
+    HF_CLI_OK=true
+  fi
 }
 
 # ── Display Header ───────────────────────────────────────────────────────────
@@ -110,8 +117,15 @@ show_header() {
   elif $OLLAMA_OK; then
     echo -e "  Ollama:  ${Y}installed but not running${D}"
   else
-    echo -e "  Ollama:  ${R}not installed${D}"
+    echo -e "  Ollama:  ${R}✗ not installed${D}"
   fi
+  if $HF_CLI_OK; then
+    echo -e "  HuggingFace CLI:  ${G}installed${D}"
+  else
+    echo -e "  HuggingFace CLI:  ${R}✗ not found${D}  ${DIM}— run: ${C}pip install huggingface-hub${D}"
+  fi
+  echo -e "  ${DIM}The fine-tuned 9B/27B models use LoRA adapters hosted on HuggingFace.${D}"
+  echo -e "  ${DIM}The CLI is required to download them. Not needed for the 0.8B test model.${D}"
   echo ""
 }
 
@@ -170,7 +184,7 @@ install_ollama() {
 ensure_ollama_running() {
   if $OLLAMA_RUNNING; then return; fi
   if ! $OLLAMA_OK; then
-    fail "Ollama not installed. Use option 2 to install."
+    fail "Ollama not installed. Use option 1 to set up."
     return 1
   fi
 
@@ -195,24 +209,30 @@ ensure_ollama_running() {
 
 pull_model() {
   local model="$1"
-  ensure_ollama_running || return
+  ensure_ollama_running || return 1
   echo -e "  Pulling ${W}${model}${D}..."
-  ollama pull "$model"
+  if ! ollama pull "$model"; then
+    fail "Failed to pull $model"
+    return 1
+  fi
   info "Pulled $model"
 }
 
 create_model() {
   local name="$1"
   local modelfile="$2"
-  ensure_ollama_running || return
+  ensure_ollama_running || return 1
 
   if [ ! -f "$modelfile" ]; then
     fail "Modelfile not found: $modelfile"
-    return
+    return 1
   fi
 
   echo -e "  Creating ${W}${name}${D} from ${modelfile}..."
-  ollama create "$name" -f "$modelfile"
+  if ! ollama create "$name" -f "$modelfile"; then
+    fail "Failed to create $name"
+    return 1
+  fi
   info "Created $name"
 }
 
@@ -223,12 +243,28 @@ download_adapter() {
 
   if ! command -v huggingface-cli &>/dev/null; then
     fail "huggingface-cli not found. Install: pip install huggingface-hub"
-    return
+    return 1
   fi
 
+  mkdir -p "$dir"
   echo -e "  Downloading ${W}${name}${D} adapter..."
-  huggingface-cli download "$repo" --local-dir "$dir"
+  if ! huggingface-cli download "$repo" --local-dir "$dir"; then
+    fail "Failed to download $name adapter"
+    return 1
+  fi
   info "Downloaded $name adapter to $dir"
+}
+
+# Check if adapter directory has safetensors file
+has_adapter() {
+  local dir="$1"
+  [ -f "$dir/adapter_model.safetensors" ]
+}
+
+# Check if Ollama has a specific model
+has_ollama_model() {
+  local model="$1"
+  ollama list 2>/dev/null | grep -q "$model"
 }
 
 # ── Model Status ─────────────────────────────────────────────────────────────
@@ -370,7 +406,7 @@ check_27b_resources() {
   if [ "$RAM_GB" -lt 16 ] 2>/dev/null; then
     echo ""
     fail "27B requires 16GB+ RAM. Your system has ${RAM_GB}GB."
-    echo -e "  ${Y}Use 9B instead (option 4 in main menu, or option 9 to create).${D}"
+    echo -e "  ${Y}Use 9B instead.${D}"
     echo ""
     return 1
   elif [ "$RAM_GB" -lt 32 ] 2>/dev/null; then
@@ -385,17 +421,154 @@ check_27b_resources() {
   return 0
 }
 
+# ── Combined Setup Workflows ─────────────────────────────────────────────────
+
+# Full first-time setup: install Ollama, pull test model, create app model, start
+setup_quickstart() {
+  echo ""
+  echo -e "  ${W}Quick Start Setup${D}"
+  echo -e "  ${DIM}Installs Ollama, pulls test model (0.8B), creates app model, starts Studio.${D}"
+  echo ""
+
+  install_ollama
+  ensure_ollama_running || return
+
+  # Step 1: Pull base model (skip if already pulled)
+  echo ""
+  echo -e "  ${C}Step 1/3:${D} Base model (qwen3.5:0.8b, ~1GB)..."
+  if has_ollama_model "qwen3.5:0.8b"; then
+    info "qwen3.5:0.8b already pulled — skipping"
+  else
+    pull_model "qwen3.5:0.8b" || { fail "Failed to pull base model. Aborting."; return; }
+  fi
+
+  # Step 2: Create app model
+  echo ""
+  echo -e "  ${C}Step 2/3:${D} Creating app model (implicitcad-dev)..."
+  if has_ollama_model "implicitcad-dev"; then
+    warn "implicitcad-dev already exists — recreating"
+  fi
+  create_model "implicitcad-dev" "./ollama/Modelfile.dev"
+
+  # Step 3: Start Studio
+  echo ""
+  echo -e "  ${C}Step 3/3:${D} Starting Studio..."
+  start_studio
+}
+
+# Setup production 9B model: pull base + download adapter + create model
+setup_9b() {
+  echo ""
+  echo -e "  ${W}9B Production Model Setup${D}"
+  echo -e "  ${DIM}Pulls qwen3.5:9b, downloads the LoRA adapter from HuggingFace,${D}"
+  echo -e "  ${DIM}and creates the implicitcad-9b app model.${D}"
+  echo ""
+
+  # Pre-flight: check huggingface-cli before starting the long download
+  if ! command -v huggingface-cli &>/dev/null; then
+    fail "huggingface-cli is required for downloading LoRA adapters."
+    echo -e "    Install: ${C}pip install huggingface-hub${D}"
+    return
+  fi
+
+  ensure_ollama_running || return
+
+  # Step 1: Pull base model (skip if already pulled)
+  echo -e "  ${C}Step 1/3:${D} Base model (qwen3.5:9b, ~6GB)..."
+  if has_ollama_model "qwen3.5:9b"; then
+    info "qwen3.5:9b already pulled — skipping"
+  else
+    pull_model "qwen3.5:9b" || { fail "Failed to pull base model. Aborting."; return; }
+  fi
+
+  # Step 2: Download LoRA adapter (skip if already present)
+  echo ""
+  echo -e "  ${C}Step 2/3:${D} LoRA adapter from HuggingFace..."
+  if has_adapter "./ollama/adapters/9b"; then
+    info "9B adapter already downloaded — skipping"
+  else
+    download_adapter "9B" "Max2475/qwen3.5-9b-openscad-lora" "./ollama/adapters/9b" || { fail "Adapter download failed. Aborting."; return; }
+  fi
+
+  # Step 3: Create app model
+  echo ""
+  echo -e "  ${C}Step 3/3:${D} Creating app model (implicitcad-9b)..."
+  if has_ollama_model "implicitcad-9b"; then
+    warn "implicitcad-9b already exists — recreating with latest adapter"
+  fi
+  create_model "implicitcad-9b" "./ollama/Modelfile.9b"
+
+  echo ""
+  info "9B model ready!"
+  echo ""
+  echo -e "  ${W}How to use it:${D}"
+  echo -e "  1. Open Studio in your browser"
+  echo -e "  2. In the AI Chat panel, click the ${W}model dropdown${D} (top of chat)"
+  echo -e "  3. Select ${C}implicitcad-9b${D}"
+  echo -e "  4. Start chatting — the 9B model will be used for code generation"
+}
+
+# Setup 27B model: pull base + download adapter + create model
+setup_27b() {
+  check_27b_resources || return
+
+  echo ""
+  echo -e "  ${W}27B Advanced Model Setup${D}"
+  echo -e "  ${DIM}Pulls qwen3.5:27b, downloads the LoRA adapter from HuggingFace,${D}"
+  echo -e "  ${DIM}and creates the implicitcad-27b app model. Requires 16GB+ RAM.${D}"
+  echo ""
+
+  # Pre-flight: check huggingface-cli
+  if ! command -v huggingface-cli &>/dev/null; then
+    fail "huggingface-cli is required for downloading LoRA adapters."
+    echo -e "    Install: ${C}pip install huggingface-hub${D}"
+    return
+  fi
+
+  ensure_ollama_running || return
+
+  # Step 1: Pull base model (skip if already pulled)
+  echo -e "  ${C}Step 1/3:${D} Base model (qwen3.5:27b, ~17GB)..."
+  if has_ollama_model "qwen3.5:27b"; then
+    info "qwen3.5:27b already pulled — skipping"
+  else
+    pull_model "qwen3.5:27b" || { fail "Failed to pull base model. Aborting."; return; }
+  fi
+
+  # Step 2: Download LoRA adapter (skip if already present)
+  echo ""
+  echo -e "  ${C}Step 2/3:${D} LoRA adapter from HuggingFace..."
+  if has_adapter "./ollama/adapters/27b"; then
+    info "27B adapter already downloaded — skipping"
+  else
+    download_adapter "27B" "Max2475/qwen3.5-27b-openscad-instruct-lora" "./ollama/adapters/27b" || { fail "Adapter download failed. Aborting."; return; }
+  fi
+
+  # Step 3: Create app model
+  echo ""
+  echo -e "  ${C}Step 3/3:${D} Creating app model (implicitcad-27b)..."
+  if has_ollama_model "implicitcad-27b"; then
+    warn "implicitcad-27b already exists — recreating with latest adapter"
+  fi
+  create_model "implicitcad-27b" "./ollama/Modelfile.27b"
+
+  echo ""
+  info "27B model ready!"
+  echo ""
+  echo -e "  ${W}How to use it:${D}"
+  echo -e "  1. Open Studio in your browser"
+  echo -e "  2. In the AI Chat panel, click the ${W}model dropdown${D} (top of chat)"
+  echo -e "  3. Select ${C}implicitcad-27b${D}"
+  echo -e "  4. Start chatting — the 27B model will be used for code generation"
+}
+
 # ── Non-Interactive Mode ─────────────────────────────────────────────────────
 
 if [ $# -gt 0 ]; then
   detect_system
   case "$1" in
     --install)
-      install_ollama
-      ensure_ollama_running
-      pull_model "qwen3.5:0.8b"
-      create_model "implicitcad-dev" "./ollama/Modelfile.dev"
-      start_studio
+      setup_quickstart
       ;;
     --start)
       start_studio
@@ -423,58 +596,323 @@ if [ $# -gt 0 ]; then
   exit 0
 fi
 
-# ── Interactive Menu ─────────────────────────────────────────────────────────
+# ── Arrow-Key Menu ──────────────────────────────────────────────────────────
+
+# Static menu structure
+MENU_LABELS=(
+  "First-time install"
+  "Start Studio"
+  "Add 9B model"
+  "Add 27B model"
+  "View status"
+  "Stop all services"
+  "Full rebuild"
+  "Quit"
+)
+
+MENU_SECTIONS=(
+  "Install"
+  "Launch"
+  "Upgrade AI Model"
+  ""
+  "Manage"
+  ""
+  ""
+  ""
+)
+
+MENU_COUNT=${#MENU_LABELS[@]}
+
+# Dynamic arrays — rebuilt each loop after detect_system
+MENU_DESCS=()
+MENU_TAGS=()
+MENU_DISABLED=()   # "1" = disabled, "" = enabled
+
+build_menu_state() {
+  # Prerequisite checks
+  local need_docker=""
+  local need_ollama=""
+
+  if ! $DOCKER_OK; then need_docker="${R}✗ Install Docker first${D}"; fi
+  if ! $OLLAMA_OK; then need_ollama="${R}✗ Install Ollama first${D}"; fi
+
+  local ram_warn=""
+  if [ "$RAM_GB" -lt 16 ] 2>/dev/null; then
+    ram_warn="${R}✗ Needs 16GB+ RAM (you have ${RAM_GB}GB)${D}"
+  fi
+
+  # 0: First-time install — needs Docker
+  if [ -n "$need_docker" ]; then
+    MENU_DESCS[0]="Set up Ollama, download 0.8B test model, and launch Studio"
+    MENU_TAGS[0]="$need_docker"
+    MENU_DISABLED[0]="1"
+  else
+    MENU_DESCS[0]="Set up Ollama, download 0.8B test model, and launch Studio"
+    MENU_TAGS[0]=""
+    MENU_DISABLED[0]=""
+  fi
+
+  # 1: Start Studio — needs Docker
+  if [ -n "$need_docker" ]; then
+    MENU_DESCS[1]="Launch Docker services, start Ollama, and open browser"
+    MENU_TAGS[1]="$need_docker"
+    MENU_DISABLED[1]="1"
+  else
+    MENU_DESCS[1]="Launch Docker services, start Ollama, and open browser"
+    MENU_TAGS[1]=""
+    MENU_DISABLED[1]=""
+  fi
+
+  # 2: Add 9B — needs Ollama + HF CLI
+  if ! $OLLAMA_OK; then
+    MENU_DESCS[2]="Download fine-tuned 9B model — switch to it in AI Chat settings"
+    MENU_TAGS[2]="$need_ollama"
+    MENU_DISABLED[2]="1"
+  elif ! $HF_CLI_OK; then
+    MENU_DESCS[2]="Download fine-tuned 9B model — switch to it in AI Chat settings"
+    MENU_TAGS[2]="${R}✗ pip install huggingface-hub${D}"
+    MENU_DISABLED[2]="1"
+  else
+    MENU_DESCS[2]="Download fine-tuned 9B model — switch to it in AI Chat settings"
+    MENU_TAGS[2]="${G}← recommended${D}"
+    MENU_DISABLED[2]=""
+  fi
+
+  # 3: Add 27B — needs Ollama + HF CLI + 16GB RAM
+  if ! $OLLAMA_OK; then
+    MENU_DESCS[3]="Download fine-tuned 27B model — best quality, needs 16GB+ RAM"
+    MENU_TAGS[3]="$need_ollama"
+    MENU_DISABLED[3]="1"
+  elif ! $HF_CLI_OK; then
+    MENU_DESCS[3]="Download fine-tuned 27B model — best quality, needs 16GB+ RAM"
+    MENU_TAGS[3]="${R}✗ pip install huggingface-hub${D}"
+    MENU_DISABLED[3]="1"
+  elif [ -n "$ram_warn" ]; then
+    MENU_DESCS[3]="Download fine-tuned 27B model — best quality"
+    MENU_TAGS[3]="$ram_warn"
+    MENU_DISABLED[3]="1"
+  else
+    MENU_DESCS[3]="Download fine-tuned 27B model — best quality, needs 16GB+ RAM"
+    MENU_TAGS[3]=""
+    MENU_DISABLED[3]=""
+  fi
+
+  # 4: View status — always available
+  MENU_DESCS[4]="Show Docker services, Ollama, and installed models"
+  MENU_TAGS[4]=""
+  MENU_DISABLED[4]=""
+
+  # 5: Stop all — always available
+  MENU_DESCS[5]="Shut down Docker services and Ollama"
+  MENU_TAGS[5]=""
+  MENU_DISABLED[5]=""
+
+  # 6: Full rebuild — needs Docker
+  if [ -n "$need_docker" ]; then
+    MENU_DESCS[6]="Rebuild all containers from scratch (slow)"
+    MENU_TAGS[6]="$need_docker"
+    MENU_DISABLED[6]="1"
+  else
+    MENU_DESCS[6]="Rebuild all containers from scratch (slow)"
+    MENU_TAGS[6]=""
+    MENU_DISABLED[6]=""
+  fi
+
+  # 7: Quit — always available
+  MENU_DESCS[7]=""
+  MENU_TAGS[7]=""
+  MENU_DISABLED[7]=""
+}
+
+# Row offsets (static — computed once)
+ITEM_ROW=()
+
+compute_item_rows() {
+  local row=0
+  local i
+  for (( i=0; i<MENU_COUNT; i++ )); do
+    if [ -n "${MENU_SECTIONS[$i]}" ]; then
+      if [ "$i" -gt 0 ]; then (( row++ )); fi
+      (( row++ ))
+    fi
+    ITEM_ROW[$i]=$row
+    (( row++ ))
+  done
+  MENU_TOTAL_LINES=$(( row + 2 ))
+}
+
+compute_item_rows
+
+# Render one menu item at its absolute screen row
+render_item() {
+  local i=$1
+  local sel=$2
+  local row=${ITEM_ROW[$i]}
+  local label="${MENU_LABELS[$i]}"
+  local desc="${MENU_DESCS[$i]}"
+  local tag="${MENU_TAGS[$i]}"
+  local disabled="${MENU_DISABLED[$i]}"
+
+  printf "\033[%d;1H" $(( MENU_START_ROW + row ))
+  printf "\033[2K"
+
+  if [ -n "$disabled" ]; then
+    # Disabled item — dim label, show requirement tag
+    if [ "$i" -eq "$sel" ]; then
+      printf "  ${DIM}▸ %-18s %s${D} %b" "$label" "$desc" "$tag"
+    else
+      printf "    ${DIM}%-18s %s${D} %b" "$label" "$desc" "$tag"
+    fi
+  elif [ "$i" -eq "$sel" ]; then
+    # Selected + enabled
+    printf "  ${C}▸${D} ${W}${B}%-18s${D} %s %b" "$label" "$desc" "$tag"
+  else
+    # Normal
+    printf "    ${DIM}%-18s %s${D} %b" "$label" "$desc" "$tag"
+  fi
+}
+
+# Full menu draw (once per outer loop)
+draw_menu_full() {
+  local sel=$1
+  local i
+  for (( i=0; i<MENU_COUNT; i++ )); do
+    if [ -n "${MENU_SECTIONS[$i]}" ]; then
+      if [ "$i" -gt 0 ]; then echo ""; fi
+      echo -e "  ${DIM}─── ${MENU_SECTIONS[$i]} ──────────────────────────────────${D}"
+    fi
+
+    local label="${MENU_LABELS[$i]}"
+    local desc="${MENU_DESCS[$i]}"
+    local tag="${MENU_TAGS[$i]}"
+    local disabled="${MENU_DISABLED[$i]}"
+
+    if [ -n "$disabled" ]; then
+      if [ "$i" -eq "$sel" ]; then
+        printf "  ${DIM}▸ %-18s %s${D} %b\n" "$label" "$desc" "$tag"
+      else
+        printf "    ${DIM}%-18s %s${D} %b\n" "$label" "$desc" "$tag"
+      fi
+    elif [ "$i" -eq "$sel" ]; then
+      printf "  ${C}▸${D} ${W}${B}%-18s${D} %s %b\n" "$label" "$desc" "$tag"
+    else
+      printf "    ${DIM}%-18s %s${D} %b\n" "$label" "$desc" "$tag"
+    fi
+  done
+  echo ""
+  echo -e "  ${DIM}↑↓ Navigate  ⏎ Select  q Quit${D}"
+}
+
+run_selection() {
+  local sel=$1
+
+  # Block disabled items
+  if [ -n "${MENU_DISABLED[$sel]}" ]; then
+    printf "\033[%d;1H" "$MENU_END_ROW"
+    echo ""
+    local label="${MENU_LABELS[$sel]}"
+    if ! $DOCKER_OK && ! $OLLAMA_OK; then
+      fail "${label} requires Docker and Ollama."
+      echo -e "    Docker:  ${C}https://docs.docker.com/get-docker/${D}"
+      echo -e "    Ollama:  ${C}https://ollama.com/download${D} or ${C}brew install ollama${D}"
+    elif ! $DOCKER_OK; then
+      fail "${label} requires Docker."
+      echo -e "    Install: ${C}https://docs.docker.com/get-docker/${D}"
+    elif ! $OLLAMA_OK; then
+      fail "${label} requires Ollama."
+      echo -e "    Install: ${C}brew install ollama${D} or ${C}https://ollama.com/download${D}"
+    elif ! $HF_CLI_OK && ( [ "$sel" -eq 2 ] || [ "$sel" -eq 3 ] ); then
+      fail "${label} requires HuggingFace CLI to download LoRA adapters."
+      echo -e "    Install: ${C}pip install huggingface-hub${D}"
+    elif [ "$sel" -eq 3 ] && [ "$RAM_GB" -lt 16 ] 2>/dev/null; then
+      fail "27B model requires 16GB+ RAM. Your system has ${RAM_GB}GB."
+      echo -e "    ${Y}Use the 9B model instead.${D}"
+    fi
+    echo ""
+    read -p "  Press Enter to continue..." _
+    return
+  fi
+
+  printf "\033[%d;1H" "$MENU_END_ROW"
+  echo ""
+  case "$sel" in
+    0) setup_quickstart ;;
+    1) ensure_ollama_running; start_studio ;;
+    2) setup_9b ;;
+    3) setup_27b ;;
+    4) show_service_status; show_model_status ;;
+    5) stop_all ;;
+    6) full_rebuild ;;
+    7) echo -e "  ${DIM}Goodbye.${D}"; echo ""; exit 0 ;;
+  esac
+  echo ""
+  read -p "  Press Enter to continue..." _
+}
+
+# ── Interactive Menu Loop ────────────────────────────────────────────────────
+
+SELECTED=0
 
 while true; do
   detect_system
+  build_menu_state
+
   show_header
 
-  echo -e "  ${W} 1)${D}  Start Studio"
-  echo -e "  ${W} 2)${D}  Install / verify Ollama"
-  echo -e "  ${W} 3)${D}  Pull qwen3.5:0.8b ${DIM}(test model)${D}"
-  echo -e "  ${W} 4)${D}  Pull qwen3.5:9b ${DIM}(production base)${D}"
-  echo -e "  ${W} 5)${D}  Pull qwen3.5:27b ${DIM}(16GB+ RAM required)${D}"
-  echo -e "  ${W} 6)${D}  Download 9B LoRA adapter"
-  echo -e "  ${W} 7)${D}  Download 27B LoRA adapter"
-  echo -e "  ${W} 8)${D}  Create implicitcad-dev"
-  echo -e "  ${W} 9)${D}  Create implicitcad-9b ${G}← recommended${D}"
-  echo -e "  ${W}10)${D}  Create implicitcad-27b"
-  echo -e "  ${W}11)${D}  Local model status"
-  echo -e "  ${W}12)${D}  Service status"
-  echo -e "  ${W}13)${D}  Stop all services"
-  echo -e "  ${W}14)${D}  Full rebuild"
-  echo -e "  ${W} q)${D}  Quit"
-  echo ""
-  read -p "  Select [1-14, q]: " choice
+  MENU_START_ROW=13
 
-  echo ""
-  case "$choice" in
-    1)  start_studio ;;
-    2)  install_ollama ;;
-    3)  pull_model "qwen3.5:0.8b" ;;
-    4)  pull_model "qwen3.5:9b" ;;
-    5)
-      check_27b_resources && pull_model "qwen3.5:27b"
-      ;;
-    6)
-      download_adapter "9B" "Max2475/qwen3.5-9b-openscad-lora" "./ollama/adapters/9b"
-      ;;
-    7)
-      download_adapter "27B" "Max2475/qwen3.5-27b-openscad-instruct-lora" "./ollama/adapters/27b"
-      ;;
-    8)  create_model "implicitcad-dev" "./ollama/Modelfile.dev" ;;
-    9)  create_model "implicitcad-9b" "./ollama/Modelfile.9b" ;;
-    10)
-      check_27b_resources && create_model "implicitcad-27b" "./ollama/Modelfile.27b"
-      ;;
-    11) show_model_status ;;
-    12) show_service_status ;;
-    13) stop_all ;;
-    14) full_rebuild ;;
-    q|Q) echo -e "  ${DIM}Goodbye.${D}"; echo ""; exit 0 ;;
-    *)  warn "Invalid option: $choice" ;;
-  esac
+  draw_menu_full "$SELECTED"
 
-  echo ""
-  read -p "  Press Enter to continue..." _
+  MENU_END_ROW=$(( MENU_START_ROW + MENU_TOTAL_LINES ))
+
+  printf "\033[?25l"
+  trap 'printf "\033[?25h"' EXIT INT TERM
+
+  while true; do
+    IFS= read -rsn1 key
+
+    if [ "$key" = $'\x1b' ]; then
+      IFS= read -rsn1 bracket
+      IFS= read -rsn1 arrow
+
+      PREV=$SELECTED
+      case "$arrow" in
+        A) (( SELECTED = (SELECTED - 1 + MENU_COUNT) % MENU_COUNT )) ;;
+        B) (( SELECTED = (SELECTED + 1) % MENU_COUNT )) ;;
+      esac
+
+      if [ "$PREV" -ne "$SELECTED" ]; then
+        render_item "$PREV" "$SELECTED"
+        render_item "$SELECTED" "$SELECTED"
+        printf "\033[%d;1H" "$MENU_END_ROW"
+      fi
+      continue
+    fi
+
+    # Enter
+    if [ "$key" = "" ]; then
+      printf "\033[?25h"
+      run_selection "$SELECTED"
+      break
+    fi
+
+    # q to quit
+    if [ "$key" = "q" ] || [ "$key" = "Q" ]; then
+      printf "\033[?25h"
+      printf "\033[%d;1H" "$MENU_END_ROW"
+      echo -e "\n  ${DIM}Goodbye.${D}\n"
+      exit 0
+    fi
+
+    # Number keys
+    if [[ "$key" =~ ^[1-9]$ ]]; then
+      idx=$(( key - 1 ))
+      if [ "$idx" -lt "$MENU_COUNT" ]; then
+        SELECTED=$idx
+        printf "\033[?25h"
+        run_selection "$SELECTED"
+        break
+      fi
+    fi
+  done
 done

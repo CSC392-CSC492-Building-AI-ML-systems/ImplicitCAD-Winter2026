@@ -70,7 +70,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     <div
       ref={ref}
       role="menu"
-      className="fixed z-[100] min-w-[160px] bg-bg-base border border-border-default rounded-lg shadow-lg py-1 overflow-hidden animate-drop-in"
+      className="fixed z-[var(--z-dropdown)] min-w-[160px] bg-bg-base border border-border-default rounded-lg shadow-lg py-1 overflow-hidden animate-drop-in"
       style={{ left: clampedX, top: clampedY }}
     >
       {items.map((item, i) => {

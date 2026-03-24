@@ -12,7 +12,7 @@ export function ModelInfoPanel() {
   const hasValidation = validation != null
 
   return (
-    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 bg-bg-base/80 backdrop-blur-md rounded-lg border border-border-default/60 shadow-sm overflow-hidden transition-all">
+    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[var(--z-panel)] bg-bg-base/80 backdrop-blur-md rounded-lg border border-border-default/60 shadow-sm overflow-hidden transition-all">
       {/* Collapsed summary */}
       <button
         onClick={() => hasValidation && setExpanded(!expanded)}
@@ -38,7 +38,9 @@ export function ModelInfoPanel() {
       </button>
 
       {/* Expanded details */}
-      {expanded && hasValidation && (
+      {hasValidation && (
+        <div className={`grid transition-all duration-200 ${expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+        <div className="overflow-hidden">
         <div className="px-3 pb-3 border-t border-border-default">
           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-2.5 text-[11px]">
             <div className="text-text-muted">Volume</div>
@@ -104,6 +106,8 @@ export function ModelInfoPanel() {
               )}
             </div>
           </div>
+        </div>
+        </div>
         </div>
       )}
     </div>

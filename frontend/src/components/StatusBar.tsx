@@ -16,7 +16,7 @@ export function StatusBar() {
   const isDirty = useFileTreeStore((s) => s.isDirty)
 
   return (
-    <div className="h-[22px] flex items-center justify-between bg-bg-surface border-t border-border-default text-[11px] font-mono text-text-muted px-3 shrink-0 z-40">
+    <div className="min-h-[1.375rem] py-0.5 flex items-center justify-between bg-bg-surface border-t border-border-default text-[11px] font-mono text-text-muted px-3 shrink-0 z-[var(--z-statusbar)]">
       {/* Left */}
       <div className="flex items-center gap-3">
         <span className="px-1.5 py-0.5 bg-bg-raised rounded text-text-secondary font-semibold">ImplicitCAD</span>

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo, Component, type ReactNode } from 'react'
+import { useRef, useEffect, useMemo, useState, Component, type ReactNode } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Grid, GizmoHelper, GizmoViewport } from '@react-three/drei'
 import { PerspectiveCamera, Vector3, Mesh, MeshPhongMaterial, DoubleSide, PCFSoftShadowMap } from 'three'
@@ -112,6 +112,7 @@ function ModelMesh() {
         color="#4F86F7"
         specular="#cccccc"
         shininess={50}
+        flatShading
         wireframe={wireframe}
         side={DoubleSide}
         transparent
@@ -228,6 +229,50 @@ class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError:
 const isMac = /Mac|iPhone|iPad/.test(navigator.userAgent)
 const modKey = isMac ? '⌘' : 'Ctrl'
 
+function RenderingOverlay() {
+  const isRendering = useViewerStore((s) => s.isRendering)
+  const cancelRender = useViewerStore((s) => s.cancelRender)
+  const revertSettings = useViewerStore((s) => s.revertSettings)
+  const [elapsed, setElapsed] = useState(0)
+  const [showCancel, setShowCancel] = useState(false)
+
+  useEffect(() => {
+    if (!isRendering) { setElapsed(0); setShowCancel(false); return }
+    const start = Date.now()
+    const timer = setInterval(() => {
+      const s = Math.floor((Date.now() - start) / 1000)
+      setElapsed(s)
+      if (s >= 5) setShowCancel(true)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [isRendering])
+
+  if (!isRendering) return null
+
+  const handleCancel = () => {
+    cancelRender()
+    revertSettings()
+  }
+
+  return (
+    <div className="absolute inset-0 bg-bg-base/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-[var(--z-panel-overlay)] transition-opacity">
+      <Loader2 size={32} className="animate-spin text-accent" />
+      <div className="text-sm text-text-secondary">Compiling...{elapsed > 0 ? ` ${elapsed}s` : ''}</div>
+      {showCancel && (
+        <div className="flex flex-col items-center gap-2 mt-2 animate-drop-in">
+          <div className="text-[11px] text-text-muted text-center max-w-[220px]">Taking a while? Cancel will revert to previous settings.</div>
+          <button
+            onClick={handleCancel}
+            className="px-3 py-1.5 text-[11px] font-medium bg-error text-white rounded-md hover:brightness-110 transition-all"
+          >
+            Cancel & Revert
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function STLViewer() {
   const geometry = useViewerStore((s) => s.geometry)
   const isRendering = useViewerStore((s) => s.isRendering)
@@ -248,13 +293,7 @@ export function STLViewer() {
         </Canvas>
       </CanvasErrorBoundary>
 
-      {/* Loading overlay */}
-      {isRendering && (
-        <div className="absolute inset-0 bg-bg-base/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-40 transition-opacity">
-          <Loader2 size={32} className="animate-spin text-accent" />
-          <div className="text-sm text-text-secondary">Rendering geometry...</div>
-        </div>
-      )}
+      <RenderingOverlay />
 
       {/* Empty state */}
       {!geometry && !isRendering && (

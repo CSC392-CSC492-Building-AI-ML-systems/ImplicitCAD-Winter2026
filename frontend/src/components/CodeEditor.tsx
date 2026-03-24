@@ -229,7 +229,7 @@ export function CodeEditor({ onRender, onCodeChange }: CodeEditorProps) {
 
       <div className="min-h-0 flex-1 relative">
         {pendingDiff && (
-          <div className="absolute top-2 right-3 z-20 flex items-center gap-2 px-3 py-1.5 bg-bg-raised border border-border-default rounded-lg shadow-md animate-drop-in">
+          <div className="absolute top-2 right-3 z-[var(--z-panel-overlay)] flex items-center gap-2 px-3 py-1.5 bg-bg-raised border border-border-default rounded-lg shadow-md animate-drop-in">
             <span className="text-xs text-text-secondary font-medium">AI suggested changes</span>
             <button
               onClick={acceptDiff}

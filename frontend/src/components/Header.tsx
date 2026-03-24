@@ -83,7 +83,7 @@ export function Header({ onRender, onOpenFolder }: HeaderProps) {
   const toggleTheme = () => setIsDark(!isDark)
 
   return (
-    <header className="flex items-center justify-between h-[50px] px-5 bg-bg-base border-b border-border-default shrink-0 z-50">
+    <header className="flex items-center justify-between h-[3.125rem] px-5 bg-bg-base border-b border-border-default shrink-0 z-[var(--z-header)]">
       <div className="flex items-center gap-2.5">
         <div className="w-7 h-7 bg-accent rounded-md flex items-center justify-center text-white font-bold text-[10px] tracking-tight">
           IC
@@ -133,7 +133,7 @@ export function Header({ onRender, onOpenFolder }: HeaderProps) {
             <Menu size={14} /> Examples
           </button>
           {examplesOpen && (
-            <div className="absolute top-full right-0 mt-1 w-72 bg-bg-base border border-border-default rounded-[10px] shadow-lg z-[200] overflow-hidden animate-drop-in" role="menu">
+            <div className="absolute top-full right-0 mt-1 w-72 bg-bg-base border border-border-default rounded-xl shadow-lg z-[var(--z-dropdown)] overflow-hidden animate-drop-in" role="menu">
               <div className="px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-widest text-text-muted border-b border-border-default">
                 Load Example
               </div>

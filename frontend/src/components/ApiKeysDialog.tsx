@@ -82,7 +82,7 @@ export function ApiKeysDialog({ onClose }: ApiKeysDialogProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center"
+      className="fixed inset-0 z-[var(--z-modal)] bg-black/30 backdrop-blur-sm flex items-center justify-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
