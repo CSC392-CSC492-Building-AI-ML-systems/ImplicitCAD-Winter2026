@@ -129,9 +129,13 @@ detect_system() {
     fi
   fi
 
-  # If no API found but local binary exists, Ollama is installed but not running
+  # If no API found but local binary exists, test if CLI still works
+  # (WSL case: ollama CLI works via socket but HTTP API is not exposed)
   if ! $OLLAMA_API_OK && $OLLAMA_LOCAL; then
     OLLAMA_OK=true
+    if ollama list &>/dev/null; then
+      OLLAMA_RUNNING=true  # CLI works = Ollama is functional
+    fi
   fi
 
   # HuggingFace CLI (needed for 9B/27B adapter downloads)
@@ -161,6 +165,8 @@ show_header() {
     echo -e "  Ollama:  ${G}running${D}  ${DIM}(${OLLAMA_URL_IN_USE})${D}"
   elif $OLLAMA_API_OK; then
     echo -e "  Ollama:  ${G}running (remote)${D}  ${DIM}(${OLLAMA_URL_IN_USE})${D}"
+  elif $OLLAMA_RUNNING && $OLLAMA_LOCAL; then
+    echo -e "  Ollama:  ${G}running (CLI)${D}  ${DIM}(HTTP API not exposed)${D}"
   elif $OLLAMA_LOCAL; then
     echo -e "  Ollama:  ${Y}installed but not running${D}  ${DIM}(run: ollama serve)${D}"
   else
