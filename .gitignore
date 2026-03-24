@@ -41,3 +41,10 @@ _workspace/
 
 # Docker
 docker-compose.override.yml
+
+# Ollama adapters (large model files — download via studio.sh)
+ollama/adapters/9b/
+ollama/adapters/27b/
+
+#Folder
+my-video/

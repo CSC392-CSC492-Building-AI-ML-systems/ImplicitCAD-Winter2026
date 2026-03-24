@@ -1,6 +1,14 @@
 #!/bin/bash
-set -e
+# ImplicitCAD Studio — Start Services
+# This script delegates to studio.sh. Run ./studio.sh directly for the TUI menu.
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/studio.sh" ] && [ $# -eq 0 ]; then
+  exec "$SCRIPT_DIR/studio.sh" --start
+fi
+
+# Fallback / passthrough for custom flags (e.g., ./up.sh -d --build)
+set -e
 docker compose up "$@"
 
 echo ""

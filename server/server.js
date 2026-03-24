@@ -2,9 +2,14 @@
  * ImplicitCAD Studio — Backend Server
  *
  * Provides:
- *   POST /api/compile   — compile .scad code via extopenscad → STL
- *   POST /api/chat      — LLM code generation via CLI tool
- *   GET  /api/health    — liveness check
+ *   POST /api/compile          — compile .scad code via extopenscad → STL
+ *   POST /api/chat             — LLM code generation (non-streaming)
+ *   POST /api/chat/stream      — LLM code generation (SSE streaming)
+ *   GET  /api/health           — liveness check
+ *   GET  /api/providers/active  — current provider/model config
+ *   POST /api/providers/select  — set active provider/model
+ *   GET  /api/providers/models  — list available models for a provider
+ *   GET  /api/providers/status  — diagnostics
  */
 
 const http = require('http')
@@ -12,7 +17,6 @@ const fs = require('fs')
 const path = require('path')
 const url = require('url')
 const { spawn, execSync } = require('child_process')
-
 const os = require('os')
 
 const PORT = parseInt(process.env.PORT || '4000', 10)
@@ -21,6 +25,35 @@ const LLM_COMMAND = process.env.LLM_COMMAND || 'claude -p'
 const EXTOPENSCAD = process.env.EXTOPENSCAD || findExtopenscad()
 const ADMESH = process.env.ADMESH || findAdmesh()
 const COMPILE_TIMEOUT = parseInt(process.env.COMPILE_TIMEOUT || '60', 10) * 1000
+const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434'
+let OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
+let ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || ''
+
+// ── Provider Config ─────────────────────────────────────────────────────────
+
+const CONFIG_PATH = path.join(WORKSPACE, '.provider-config.json')
+
+function loadProviderConfig() {
+  try {
+    const data = fs.readFileSync(CONFIG_PATH, 'utf8')
+    const config = JSON.parse(data)
+    if (config.provider && config.model) return config
+  } catch {}
+  return {
+    provider: process.env.ACTIVE_PROVIDER || 'ollama',
+    model: process.env.ACTIVE_MODEL || 'implicitcad-dev',
+  }
+}
+
+function saveProviderConfig(config) {
+  try {
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2))
+  } catch {}
+}
+
+let activeConfig = loadProviderConfig()
+
+// ── Binary Discovery ────────────────────────────────────────────────────────
 
 function findExtopenscad() {
   try { return execSync('which extopenscad 2>/dev/null').toString().trim() } catch {}
@@ -98,7 +131,8 @@ if (!fs.existsSync(WORKSPACE)) {
   fs.mkdirSync(WORKSPACE, { recursive: true })
 }
 
-// Load ImplicitCAD manual for LLM system prompt
+// ── System Prompt ───────────────────────────────────────────────────────────
+
 function loadSystemPrompt() {
   const paths = [
     path.join(__dirname, 'implicitcad-manual.md'),
@@ -115,7 +149,7 @@ function loadSystemPrompt() {
 
 const SYSTEM_PROMPT = loadSystemPrompt()
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -143,7 +177,23 @@ function extractCode(response) {
   return response.trim()
 }
 
-function executeLLM(prompt) {
+function buildMessages(prompt, code, history) {
+  const messages = [{ role: 'system', content: SYSTEM_PROMPT }]
+  if (history?.length) {
+    for (const m of history.slice(-6)) {
+      messages.push({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content })
+    }
+  }
+  let userContent = ''
+  if (code?.trim()) userContent += `Current code:\n\`\`\`\n${code.trim()}\n\`\`\`\n\n`
+  userContent += prompt.trim()
+  messages.push({ role: 'user', content: userContent })
+  return messages
+}
+
+// ── Provider: CLI (legacy) ──────────────────────────────────────────────────
+
+function callLLMCli(prompt) {
   return new Promise((resolve, reject) => {
     const args = LLM_COMMAND.split(/\s+/)
     const cmd = args.shift()
@@ -159,7 +209,173 @@ function executeLLM(prompt) {
   })
 }
 
-// ── Compile ──────────────────────────────────────────────────────────────────
+// ── Provider: Ollama ────────────────────────────────────────────────────────
+
+async function callOllama(messages, model, stream = false) {
+  const resp = await fetch(`${OLLAMA_URL}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, messages, stream, think: false }),
+  })
+  if (!resp.ok) {
+    const text = await resp.text()
+    throw new Error(`Ollama error ${resp.status}: ${text.slice(0, 200)}`)
+  }
+  if (stream) return resp.body
+  const data = await resp.json()
+  return data.message?.content || ''
+}
+
+async function listOllamaModels() {
+  try {
+    const resp = await fetch(`${OLLAMA_URL}/api/tags`)
+    if (!resp.ok) return []
+    const data = await resp.json()
+    return (data.models || []).map(m => ({ name: m.name, size: m.size, modified: m.modified_at }))
+  } catch {
+    return []
+  }
+}
+
+async function isOllamaReachable() {
+  try {
+    const resp = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(3000) })
+    return resp.ok
+  } catch {
+    return false
+  }
+}
+
+// ── Provider: OpenAI ────────────────────────────────────────────────────────
+
+async function callOpenAI(messages, model, stream = false) {
+  if (!OPENAI_API_KEY) throw new Error('OpenAI API key not configured. Set OPENAI_API_KEY env var.')
+  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({ model, messages, stream }),
+  })
+  if (!resp.ok) {
+    const text = await resp.text()
+    throw new Error(`OpenAI error ${resp.status}: ${text.slice(0, 200)}`)
+  }
+  if (stream) return resp.body
+  const data = await resp.json()
+  return data.choices?.[0]?.message?.content || ''
+}
+
+// ── Provider: Anthropic ─────────────────────────────────────────────────────
+
+async function callAnthropic(messages, model, stream = false) {
+  if (!ANTHROPIC_API_KEY) throw new Error('Anthropic API key not configured. Set ANTHROPIC_API_KEY env var.')
+
+  // Anthropic Messages API: system goes in top-level field, not in messages array
+  const systemMsg = messages.find(m => m.role === 'system')
+  const chatMessages = messages.filter(m => m.role !== 'system')
+
+  const body = { model, max_tokens: 4096, messages: chatMessages }
+  if (systemMsg) body.system = systemMsg.content
+  if (stream) body.stream = true
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!resp.ok) {
+    const text = await resp.text()
+    throw new Error(`Anthropic error ${resp.status}: ${text.slice(0, 200)}`)
+  }
+  if (stream) return resp.body
+  const data = await resp.json()
+  return data.content?.[0]?.text || ''
+}
+
+// ── Provider Dispatch ───────────────────────────────────────────────────────
+
+async function routeInference(messages, stream = false) {
+  const { provider, model } = activeConfig
+  switch (provider) {
+    case 'ollama':    return callOllama(messages, model, stream)
+    case 'openai':    return callOpenAI(messages, model, stream)
+    case 'anthropic': return callAnthropic(messages, model, stream)
+    default:          throw new Error(`Unknown provider: ${provider}`)
+  }
+}
+
+// ── Stream Normalizer (converts provider streams to SSE) ────────────────────
+
+async function* normalizeStream(providerStream, provider) {
+  const decoder = new TextDecoder()
+  const reader = providerStream.getReader()
+  let buffer = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+
+      if (provider === 'ollama') {
+        // Ollama: newline-delimited JSON
+        // Qwen 3.5 emits "thinking" tokens (empty content) before real content.
+        // We skip thinking tokens and only forward content tokens.
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const data = JSON.parse(line)
+            const token = data.message?.content || ''
+            if (token) yield { token, done: false }
+            if (data.done) yield { token: '', done: true }
+          } catch {}
+        }
+      } else if (provider === 'openai') {
+        // OpenAI: SSE with data: lines
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const payload = line.slice(6).trim()
+          if (payload === '[DONE]') { yield { token: '', done: true }; continue }
+          try {
+            const data = JSON.parse(payload)
+            const token = data.choices?.[0]?.delta?.content || ''
+            if (token) yield { token, done: false }
+          } catch {}
+        }
+      } else if (provider === 'anthropic') {
+        // Anthropic: SSE with event types
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const data = JSON.parse(line.slice(6))
+            if (data.type === 'content_block_delta') {
+              const token = data.delta?.text || ''
+              if (token) yield { token, done: false }
+            } else if (data.type === 'message_stop') {
+              yield { token: '', done: true }
+            }
+          } catch {}
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+// ── Compile ─────────────────────────────────────────────────────────────────
 
 function compileScad(code, options = {}) {
   return new Promise((resolve) => {
@@ -210,7 +426,17 @@ function compileScad(code, options = {}) {
   })
 }
 
-// ── HTTP Server ──────────────────────────────────────────────────────────────
+// ── Approved Model Lists ────────────────────────────────────────────────────
+
+const OPENAI_MODELS = [
+  'gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
+]
+
+const ANTHROPIC_MODELS = [
+  'claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4', 'claude-sonnet-4',
+]
+
+// ── HTTP Server ─────────────────────────────────────────────────────────────
 
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -223,16 +449,31 @@ const server = http.createServer(async (req, res) => {
   const parsed = url.parse(req.url, true)
   const pathname = parsed.pathname
 
-  // Health
+  // ── Health ──────────────────────────────────────────────────────────────
+
   if (pathname === '/api/health' && req.method === 'GET') {
     let extopenscadOk = false
     try { execSync(`${EXTOPENSCAD} --help 2>&1`, { timeout: 5000 }); extopenscadOk = true } catch {}
+    const ollamaReachable = await isOllamaReachable()
     res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ status: 'ok', extopenscad: EXTOPENSCAD, extopenscadOk, admeshOk: !!ADMESH, llmCommand: LLM_COMMAND, workspace: WORKSPACE }))
+    res.end(JSON.stringify({
+      status: 'ok',
+      extopenscad: EXTOPENSCAD,
+      extopenscadOk,
+      admeshOk: !!ADMESH,
+      workspace: WORKSPACE,
+      activeProvider: activeConfig.provider,
+      activeModel: activeConfig.model,
+      ollamaUrl: OLLAMA_URL,
+      ollamaReachable,
+      openaiKeySet: !!OPENAI_API_KEY,
+      anthropicKeySet: !!ANTHROPIC_API_KEY,
+    }))
     return
   }
 
-  // Compile
+  // ── Compile ─────────────────────────────────────────────────────────────
+
   if (pathname === '/api/compile' && req.method === 'POST') {
     try {
       const body = await parseJsonBody(req)
@@ -264,32 +505,196 @@ const server = http.createServer(async (req, res) => {
     return
   }
 
-  // Chat
+  // ── Chat (non-streaming, backward compatible) ───────────────────────────
+
   if (pathname === '/api/chat' && req.method === 'POST') {
     try {
       const body = await parseJsonBody(req)
       if (!body.prompt?.trim()) { res.writeHead(400); res.end(JSON.stringify({ error: 'Prompt required' })); return }
-      let fullPrompt = SYSTEM_PROMPT + '\n\n'
-      if (body.code?.trim()) fullPrompt += `Current code:\n\`\`\`\n${body.code.trim()}\n\`\`\`\n\n`
-      if (body.history?.length) {
-        fullPrompt += 'Previous conversation:\n'
-        for (const m of body.history.slice(-6)) fullPrompt += `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}\n`
-        fullPrompt += '\n'
-      }
-      fullPrompt += `User request: ${body.prompt.trim()}\n\nGenerate the OpenSCAD code:`
 
-      const raw = await executeLLM(fullPrompt)
+      const messages = buildMessages(body.prompt, body.code, body.history)
+      let raw
+
+      if (activeConfig.provider === 'cli') {
+        // Legacy CLI path
+        let fullPrompt = SYSTEM_PROMPT + '\n\n'
+        if (body.code?.trim()) fullPrompt += `Current code:\n\`\`\`\n${body.code.trim()}\n\`\`\`\n\n`
+        if (body.history?.length) {
+          fullPrompt += 'Previous conversation:\n'
+          for (const m of body.history.slice(-6)) fullPrompt += `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}\n`
+          fullPrompt += '\n'
+        }
+        fullPrompt += `User request: ${body.prompt.trim()}\n\nGenerate the OpenSCAD code:`
+        raw = await callLLMCli(fullPrompt)
+      } else {
+        raw = await routeInference(messages, false)
+      }
+
       const code = extractCode(raw)
       if (!code) {
         res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: 'Empty LLM response', raw: raw.slice(0, 500) }))
+        res.end(JSON.stringify({ error: 'Empty LLM response', raw: (raw || '').slice(0, 500) }))
         return
       }
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ code, message: 'Code generated' }))
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ error: e.message, hint: `Ensure "${LLM_COMMAND}" is installed. Set LLM_COMMAND env var.` }))
+      res.end(JSON.stringify({ error: e.message, hint: `Provider: ${activeConfig.provider}, Model: ${activeConfig.model}` }))
+    }
+    return
+  }
+
+  // ── Chat Stream (SSE) ──────────────────────────────────────────────────
+
+  if (pathname === '/api/chat/stream' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody(req)
+      if (!body.prompt?.trim()) { res.writeHead(400); res.end(JSON.stringify({ error: 'Prompt required' })); return }
+
+      const messages = buildMessages(body.prompt, body.code, body.history)
+
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      })
+
+      // Handle client disconnect
+      let aborted = false
+      req.on('close', () => { aborted = true })
+
+      if (activeConfig.provider === 'cli') {
+        // CLI fallback: non-streaming, send as single SSE event
+        let fullPrompt = SYSTEM_PROMPT + '\n\n'
+        if (body.code?.trim()) fullPrompt += `Current code:\n\`\`\`\n${body.code.trim()}\n\`\`\`\n\n`
+        fullPrompt += `User request: ${body.prompt.trim()}\n\nGenerate the OpenSCAD code:`
+        const raw = await callLLMCli(fullPrompt)
+        const code = extractCode(raw)
+        res.write(`data: ${JSON.stringify({ token: raw, done: false })}\n\n`)
+        res.write(`data: ${JSON.stringify({ token: '', done: true, code })}\n\n`)
+        res.end()
+        return
+      }
+
+      const providerStream = await routeInference(messages, true)
+      let accumulated = ''
+      let sentDone = false
+
+      for await (const event of normalizeStream(providerStream, activeConfig.provider)) {
+        if (aborted) break
+        if (event.done) {
+          const code = extractCode(accumulated)
+          res.write(`data: ${JSON.stringify({ token: '', done: true, code })}\n\n`)
+          sentDone = true
+        } else {
+          accumulated += event.token
+          res.write(`data: ${JSON.stringify({ token: event.token, done: false })}\n\n`)
+        }
+      }
+
+      // If stream ended without a done event, send one
+      if (!aborted && !sentDone && accumulated) {
+        const code = extractCode(accumulated)
+        res.write(`data: ${JSON.stringify({ token: '', done: true, code })}\n\n`)
+      }
+
+      res.end()
+    } catch (e) {
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: e.message }))
+      } else {
+        res.write(`data: ${JSON.stringify({ error: e.message, done: true })}\n\n`)
+        res.end()
+      }
+    }
+    return
+  }
+
+  // ── Provider: Get Active ───────────────────────────────────────────────
+
+  if (pathname === '/api/providers/active' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify(activeConfig))
+    return
+  }
+
+  // ── Provider: Select ──────────────────────────────────────────────────
+
+  if (pathname === '/api/providers/select' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody(req)
+      if (!body.provider || !body.model) {
+        res.writeHead(400, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'provider and model required' }))
+        return
+      }
+      activeConfig = { provider: body.provider, model: body.model }
+      saveProviderConfig(activeConfig)
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(activeConfig))
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: e.message }))
+    }
+    return
+  }
+
+  // ── Provider: List Models ─────────────────────────────────────────────
+
+  if (pathname === '/api/providers/models' && req.method === 'GET') {
+    const provider = parsed.query.provider || activeConfig.provider
+    let models = []
+
+    if (provider === 'ollama') {
+      const allModels = await listOllamaModels()
+      // App-facing view: only implicitcad-* models, strip :latest suffix to avoid duplicates
+      models = [...new Set(
+        allModels
+          .filter(m => m.name.startsWith('implicitcad'))
+          .map(m => m.name.replace(/:latest$/, ''))
+      )]
+    } else if (provider === 'openai') {
+      models = OPENAI_MODELS
+    } else if (provider === 'anthropic') {
+      models = ANTHROPIC_MODELS
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ provider, models }))
+    return
+  }
+
+  // ── Provider: Status ──────────────────────────────────────────────────
+
+  if (pathname === '/api/providers/status' && req.method === 'GET') {
+    const ollamaReachable = await isOllamaReachable()
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({
+      active: activeConfig,
+      ollamaReachable,
+      openaiKeySet: !!OPENAI_API_KEY,
+      anthropicKeySet: !!ANTHROPIC_API_KEY,
+    }))
+    return
+  }
+
+  // ── Provider: Set API Keys ──────────────────────────────────────────
+
+  if (pathname === '/api/providers/keys' && req.method === 'PUT') {
+    try {
+      const body = await parseJsonBody(req)
+      if (typeof body.openaiKey === 'string') OPENAI_API_KEY = body.openaiKey.trim()
+      if (typeof body.anthropicKey === 'string') ANTHROPIC_API_KEY = body.anthropicKey.trim()
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({
+        openaiKeySet: !!OPENAI_API_KEY,
+        anthropicKeySet: !!ANTHROPIC_API_KEY,
+      }))
+    } catch (e) {
+      res.writeHead(400, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: e.message }))
     }
     return
   }
@@ -298,7 +703,7 @@ const server = http.createServer(async (req, res) => {
   res.end('Not Found')
 })
 
-// ── Start ────────────────────────────────────────────────────────────────────
+// ── Start ───────────────────────────────────────────────────────────────────
 
 server.listen(PORT, () => {
   console.log('')
@@ -307,12 +712,18 @@ server.listen(PORT, () => {
   console.log('├──────────────────────────────────────────────────┤')
   console.log(`│  API:         http://localhost:${PORT}                │`)
   console.log(`│  extopenscad: ${EXTOPENSCAD.slice(0, 36).padEnd(36)}│`)
-  console.log(`│  LLM CLI:     ${LLM_COMMAND.padEnd(36)}│`)
+  console.log(`│  Provider:    ${(activeConfig.provider + ' / ' + activeConfig.model).slice(0, 36).padEnd(36)}│`)
+  console.log(`│  Ollama URL:  ${OLLAMA_URL.slice(0, 36).padEnd(36)}│`)
   console.log(`│  Workspace:   ${WORKSPACE.slice(0, 36).padEnd(36)}│`)
   console.log('├──────────────────────────────────────────────────┤')
-  console.log('│  POST /api/compile  — compile .scad → STL       │')
-  console.log('│  POST /api/chat     — AI code generation        │')
-  console.log('│  GET  /api/health   — status check              │')
+  console.log('│  POST /api/compile         — .scad → STL        │')
+  console.log('│  POST /api/chat            — AI (non-streaming)  │')
+  console.log('│  POST /api/chat/stream     — AI (SSE streaming)  │')
+  console.log('│  GET  /api/providers/active — active config       │')
+  console.log('│  POST /api/providers/select — set provider/model  │')
+  console.log('│  GET  /api/providers/models — list models         │')
+  console.log('│  GET  /api/providers/status — diagnostics         │')
+  console.log('│  GET  /api/health          — status check         │')
   console.log('└──────────────────────────────────────────────────┘')
   console.log('')
 })

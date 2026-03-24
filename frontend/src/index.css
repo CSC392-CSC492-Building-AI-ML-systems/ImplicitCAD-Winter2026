@@ -82,6 +82,10 @@
     --viewport: #030712;
   }
 
+  html {
+    font-size: 80%;
+  }
+
   body {
     font-family: var(--font-ui);
     overflow: hidden;

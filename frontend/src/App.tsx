@@ -268,7 +268,7 @@ export default function App() {
         {/* Main content */}
         <Group orientation="horizontal" className="flex-1 min-w-0">
           {/* Left column */}
-          <Panel defaultSize={35} minSize={20}>
+          <Panel defaultSize={40} minSize={20}>
             {leftTopEmpty ? (
               <div className="flex flex-col h-full">
                 <EmptyZoneDropTarget zone="topLeft" />
@@ -316,11 +316,11 @@ export default function App() {
               </div>
             ) : (
               <Group orientation="vertical">
-                <Panel defaultSize={80} minSize={30}>
+                <Panel defaultSize={50} minSize={20}>
                   <PanelZone zone="topRight" onRender={handleRender} onCodeChange={handleCodeChange} />
                 </Panel>
                 <Separator className={separatorH}><div className={separatorDot} /></Separator>
-                <Panel defaultSize={20} minSize={8}>
+                <Panel defaultSize={50} minSize={15}>
                   <PanelZone zone="bottomRight" onRender={handleRender} onCodeChange={handleCodeChange} />
                 </Panel>
               </Group>

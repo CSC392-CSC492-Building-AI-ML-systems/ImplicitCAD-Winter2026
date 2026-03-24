@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect } from 'react'
-import Editor, { type OnMount, type BeforeMount, type Monaco } from '@monaco-editor/react'
-import { ChevronRight, FileCode2, PanelLeftOpen, X } from 'lucide-react'
+import Editor, { DiffEditor, type OnMount, type BeforeMount, type Monaco } from '@monaco-editor/react'
+import { Check, ChevronRight, FileCode2, PanelLeftOpen, X as XIcon } from 'lucide-react'
 import { openscadLanguageDef, studioLightTheme, studioDarkTheme } from '../lib/openscadLanguage'
 import { registerCompletionProvider, registerSignatureHelpProvider } from '../lib/openscadCompletions'
 import { useEditorStore } from '../stores/editorStore'
@@ -19,6 +19,9 @@ export function CodeEditor({ onRender, onCodeChange }: CodeEditorProps) {
   const autoRender = useEditorStore((s) => s.autoRender)
   const isDark = useEditorStore((s) => s.isDark)
   const errors = useEditorStore((s) => s.errors)
+  const pendingDiff = useEditorStore((s) => s.pendingDiff)
+  const acceptDiff = useEditorStore((s) => s.acceptDiff)
+  const rejectDiff = useEditorStore((s) => s.rejectDiff)
   const rootName = useFileTreeStore((s) => s.rootName)
   const openFiles = useFileTreeStore((s) => s.openFiles)
   const activeFile = useFileTreeStore((s) => s.activeFile)
@@ -141,7 +144,7 @@ export function CodeEditor({ onRender, onCodeChange }: CodeEditorProps) {
                     requestCloseFile(tab.path)
                   }}
                 >
-                  <X size={12} />
+                  <XIcon size={12} />
                 </button>
               </div>
             )
@@ -224,32 +227,75 @@ export function CodeEditor({ onRender, onCodeChange }: CodeEditorProps) {
         )}
       </div>
 
-      <div className="min-h-0 flex-1">
-        <Editor
-          height="100%"
-          language="openscad"
-          theme={isDark ? 'studio-dark' : 'studio-light'}
-          value={code}
-          onChange={handleChange}
-          beforeMount={handleBeforeMount}
-          onMount={handleMount}
-          options={{
-            fontFamily: "'IBM Plex Mono', monospace",
-            fontSize: 13,
-            lineHeight: 22,
-            padding: { top: 12 },
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            tabSize: 4,
-            renderWhitespace: 'selection',
-            bracketPairColorization: { enabled: true },
-            guides: { indentation: true, bracketPairs: true },
-            smoothScrolling: true,
-            cursorBlinking: 'smooth',
-            cursorSmoothCaretAnimation: 'on',
-          }}
-        />
+      <div className="min-h-0 flex-1 relative">
+        {pendingDiff && (
+          <div className="absolute top-2 right-3 z-20 flex items-center gap-2 px-3 py-1.5 bg-bg-raised border border-border-default rounded-lg shadow-md animate-drop-in">
+            <span className="text-xs text-text-secondary font-medium">AI suggested changes</span>
+            <button
+              onClick={acceptDiff}
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-success text-white rounded-md hover:brightness-110 transition-all"
+            >
+              <Check size={12} />
+              Accept
+            </button>
+            <button
+              onClick={rejectDiff}
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-bg-base text-text-secondary border border-border-default rounded-md hover:text-text-primary hover:border-border-strong transition-all"
+            >
+              <XIcon size={12} />
+              Reject
+            </button>
+          </div>
+        )}
+
+        {pendingDiff ? (
+          <DiffEditor
+            height="100%"
+            language="openscad"
+            theme={isDark ? 'studio-dark' : 'studio-light'}
+            original={pendingDiff.original}
+            modified={pendingDiff.proposed}
+            beforeMount={handleBeforeMount}
+            options={{
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: 13,
+              lineHeight: 22,
+              padding: { top: 40 },
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              readOnly: true,
+              renderSideBySide: false,
+              smoothScrolling: true,
+            }}
+          />
+        ) : (
+          <Editor
+            height="100%"
+            language="openscad"
+            theme={isDark ? 'studio-dark' : 'studio-light'}
+            value={code}
+            onChange={handleChange}
+            beforeMount={handleBeforeMount}
+            onMount={handleMount}
+            options={{
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: 13,
+              lineHeight: 22,
+              padding: { top: 12 },
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              tabSize: 4,
+              renderWhitespace: 'selection',
+              bracketPairColorization: { enabled: true },
+              guides: { indentation: true, bracketPairs: true },
+              smoothScrolling: true,
+              cursorBlinking: 'smooth',
+              cursorSmoothCaretAnimation: 'on',
+            }}
+          />
+        )}
       </div>
     </div>
   )

@@ -32,6 +32,12 @@ export interface EditorError {
   severity: 'error' | 'warning'
 }
 
+export interface PendingDiff {
+  original: string
+  proposed: string
+  prompt: string
+}
+
 interface EditorState {
   code: string
   autoRender: boolean
@@ -41,6 +47,7 @@ interface EditorState {
   cursorLine: number
   cursorColumn: number
   commandPaletteOpen: boolean
+  pendingDiff: PendingDiff | null
   setCode: (code: string) => void
   setAutoRender: (v: boolean) => void
   setIsDark: (v: boolean) => void
@@ -49,6 +56,9 @@ interface EditorState {
   setErrors: (errors: EditorError[]) => void
   setCursorPosition: (line: number, col: number) => void
   setCommandPaletteOpen: (v: boolean) => void
+  setPendingDiff: (diff: PendingDiff | null) => void
+  acceptDiff: () => void
+  rejectDiff: () => void
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -60,6 +70,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   cursorLine: 1,
   cursorColumn: 1,
   commandPaletteOpen: false,
+  pendingDiff: null,
   setCode: (code) => {
     debouncedSave(code)
     set({ code })
@@ -76,6 +87,14 @@ export const useEditorStore = create<EditorState>((set) => ({
   setErrors: (errors) => set({ errors }),
   setCursorPosition: (cursorLine, cursorColumn) => set({ cursorLine, cursorColumn }),
   setCommandPaletteOpen: (commandPaletteOpen) => set({ commandPaletteOpen }),
+  setPendingDiff: (pendingDiff) => set({ pendingDiff }),
+  acceptDiff: () =>
+    set((s) => {
+      if (!s.pendingDiff) return {}
+      debouncedSave(s.pendingDiff.proposed)
+      return { code: s.pendingDiff.proposed, pendingDiff: null }
+    }),
+  rejectDiff: () => set({ pendingDiff: null }),
 }))
 
 function now() {

@@ -12,7 +12,7 @@ services:
       - implicitcad-bin:/opt/implicitcad-bin
     restart: unless-stopped
 
-  # Node.js API server: compile, chat, file management
+  # Node.js API server: compile, chat, file management, provider routing
   server:
     build:
       context: ./server
@@ -20,12 +20,19 @@ services:
     container_name: implicitcad-server
     ports:
       - "4000:4000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - PORT=4000
       - EXTOPENSCAD=/opt/implicitcad-bin/extopenscad
       - WORKSPACE=/workspace
       - LLM_COMMAND=${LLM_COMMAND:-echo "LLM not configured"}
       - COMPILE_TIMEOUT=${COMPILE_TIMEOUT:-60}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ACTIVE_PROVIDER=${ACTIVE_PROVIDER:-ollama}
+      - ACTIVE_MODEL=${ACTIVE_MODEL:-implicitcad-dev}
     volumes:
       - ${WORKSPACE_DIR:-./_workspace}:/workspace
       - implicitcad-bin:/opt/implicitcad-bin:ro

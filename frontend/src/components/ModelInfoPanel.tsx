@@ -12,11 +12,11 @@ export function ModelInfoPanel() {
   const hasValidation = validation != null
 
   return (
-    <div className="absolute top-3.5 left-3.5 bg-bg-base/90 backdrop-blur-sm rounded-[10px] border border-border-default shadow-md overflow-hidden transition-all">
+    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 bg-bg-base/80 backdrop-blur-md rounded-lg border border-border-default/60 shadow-sm overflow-hidden transition-all">
       {/* Collapsed summary */}
       <button
         onClick={() => hasValidation && setExpanded(!expanded)}
-        className={`flex items-center gap-2 px-3 py-2 font-mono text-[11px] text-text-secondary w-full text-left ${hasValidation ? 'cursor-pointer hover:bg-bg-hover' : 'cursor-default'}`}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-[10px] text-text-secondary w-full text-left ${hasValidation ? 'cursor-pointer hover:bg-bg-hover' : 'cursor-default'}`}
       >
         <span>
           <span className="font-semibold text-text-primary">{modelInfo.sizeX}</span> x{' '}

@@ -22,20 +22,21 @@ interface LayoutState {
 const ALL_PANELS: PanelId[] = ['code', 'ref', 'chat', 'viewer', 'output']
 
 const DEFAULT_ZONES: Record<ZoneId, PanelId[]> = {
-  topLeft: ['code', 'ref'],
-  bottomLeft: ['chat'],
+  topLeft: ['code', 'output', 'ref'],
+  bottomLeft: [],
   topRight: ['viewer'],
-  bottomRight: ['output'],
+  bottomRight: ['chat'],
 }
 
 const DEFAULT_ACTIVE: Record<ZoneId, PanelId> = {
   topLeft: 'code',
-  bottomLeft: 'chat',
+  bottomLeft: 'code',
   topRight: 'viewer',
-  bottomRight: 'output',
+  bottomRight: 'chat',
 }
 
 const STORAGE_KEY = 'implicitcad-layout'
+const LAYOUT_VERSION = 2  // Bump to reset persisted layout to new defaults
 
 function getSibling(zone: ZoneId): ZoneId {
   switch (zone) {
@@ -64,7 +65,7 @@ function loadLayout(): { zones: Record<ZoneId, PanelId[]>; activeTab: Record<Zon
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return { zones: DEFAULT_ZONES, activeTab: DEFAULT_ACTIVE }
     const parsed = JSON.parse(raw)
-    if (!parsed.zones) return { zones: DEFAULT_ZONES, activeTab: DEFAULT_ACTIVE }
+    if (!parsed.zones || parsed.version !== LAYOUT_VERSION) return { zones: DEFAULT_ZONES, activeTab: DEFAULT_ACTIVE }
     // Migration: strip removed 'files' panel from old persisted layouts
     for (const z of Object.keys(parsed.zones) as ZoneId[]) {
       parsed.zones[z] = (parsed.zones[z] as string[]).filter((p: string) => p !== 'files')
@@ -83,7 +84,7 @@ function loadLayout(): { zones: Record<ZoneId, PanelId[]>; activeTab: Record<Zon
 }
 
 function persist(zones: Record<ZoneId, PanelId[]>, activeTab: Record<ZoneId, PanelId>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ zones, activeTab }))
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ zones, activeTab, version: LAYOUT_VERSION }))
 }
 
 const initial = loadLayout()

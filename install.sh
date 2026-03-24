@@ -1,8 +1,18 @@
 #!/bin/bash
+# ImplicitCAD Studio — One-Click Install
+# This script delegates to studio.sh for the full interactive experience.
+# Run ./studio.sh directly for the TUI menu.
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/studio.sh" ]; then
+  exec "$SCRIPT_DIR/studio.sh" --install
+fi
+
+# Fallback: original install logic below
 set -e
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ImplicitCAD Studio — One-Click Install
+# ImplicitCAD Studio — One-Click Install (legacy fallback)
 # ─────────────────────────────────────────────────────────────────────────────
 
 G='\033[0;32m'

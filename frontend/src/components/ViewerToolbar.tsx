@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Square, Triangle, Hexagon, Download, RotateCcw, Camera, Settings } from 'lucide-react'
+import { Download, RotateCcw, Camera, Settings } from 'lucide-react'
 import { useViewerStore } from '../stores/viewerStore'
 import { useEditorStore } from '../stores/editorStore'
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
@@ -46,7 +46,6 @@ export function ViewerToolbar() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const settingsRef = useRef<HTMLDivElement>(null)
 
-  // Close settings popover on outside click
   useEffect(() => {
     if (!settingsOpen) return
     const handler = (e: MouseEvent) => {
@@ -74,12 +73,10 @@ export function ViewerToolbar() {
       log('Downloaded STL (from compilation)', 'success')
       return
     }
-
     if (!geometry) {
       log('No model to export', 'warning')
       return
     }
-
     try {
       const mesh = new ThreeMesh(geometry, new MeshBasicMaterial())
       const exporter = new STLExporter()
@@ -92,114 +89,129 @@ export function ViewerToolbar() {
     }
   }
 
-  // Hide toolbar when no geometry
   if (!geometry) return null
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 p-[5px] bg-bg-base/90 rounded-[10px] border border-border-default shadow-md backdrop-blur-sm">
-      <ToolBtn icon={<Square size={16} />} title="Front View" onClick={() => setCameraPreset('front')} />
-      <ToolBtn icon={<Triangle size={16} />} title="Top View" onClick={() => setCameraPreset('top')} />
-      <ToolBtn icon={<Hexagon size={16} />} title="Isometric" onClick={() => setCameraPreset('iso')} />
-      <div className="w-px h-6 bg-border-default mx-0.5" />
-      <ToolBtn icon={<span className="text-[10px] font-mono font-bold leading-none">XY</span>} title="Grid XY (floor)" active={gridXY} onClick={toggleGridXY} />
-      <ToolBtn icon={<span className="text-[10px] font-mono font-bold leading-none">XZ</span>} title="Grid XZ (front wall)" active={gridXZ} onClick={toggleGridXZ} />
-      <ToolBtn icon={<span className="text-[10px] font-mono font-bold leading-none">YZ</span>} title="Grid YZ (side wall)" active={gridYZ} onClick={toggleGridYZ} />
-      <ToolBtn
-        icon={<div className="text-xs font-mono font-bold">W</div>}
-        title="Wireframe"
-        active={wireframe}
-        onClick={toggleWireframe}
-      />
-      <div className="w-px h-6 bg-border-default mx-0.5" />
-      <ToolBtn icon={<RotateCcw size={16} />} title="Reset View" onClick={() => setCameraPreset('reset')} />
-      <ToolBtn icon={<Download size={16} />} title="Export STL" onClick={handleExport} />
-      <ToolBtn icon={<Camera size={16} />} title="Screenshot" onClick={handleScreenshot} />
-      <div className="w-px h-6 bg-border-default mx-0.5" />
-
-      {/* Settings popover trigger */}
-      <div className="relative" ref={settingsRef}>
-        <ToolBtn
-          icon={<Settings size={16} />}
-          title="Render Settings"
-          active={settingsOpen}
-          onClick={() => setSettingsOpen(!settingsOpen)}
-        />
-
-        {settingsOpen && (
-          <div className="absolute bottom-full right-0 mb-2 w-56 bg-bg-base/95 rounded-[10px] border border-border-default shadow-lg backdrop-blur-sm animate-drop-in">
-            <div className="px-3.5 py-2.5 border-b border-border-default">
-              <label className="text-[11px] font-semibold uppercase tracking-widest text-text-muted">Quality ($quality)</label>
-              <div className="flex items-center gap-2 mt-1.5">
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={resolution}
-                  onChange={(e) => setResolution(+e.target.value)}
-                  className="flex-1 h-[3px] bg-border-default rounded-sm appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-bg-base [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:bg-accent [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-bg-base [&::-moz-range-thumb]:shadow-sm [&::-moz-range-track]:bg-border-default [&::-moz-range-track]:h-[3px] [&::-moz-range-track]:rounded-sm"
-                />
-                <span className="font-mono text-xs text-accent font-medium w-16 text-right">{getQualityLabel(resolution)}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2.5 px-3.5 py-2.5">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-medium text-text-muted">$fn (segments)</label>
-                <input
-                  type="number"
-                  min={3}
-                  max={360}
-                  placeholder="Auto"
-                  value={fnSegments ?? ''}
-                  onChange={(e) => setFnSegments(e.target.value ? Number(e.target.value) : null)}
-                  className="w-20 px-2 py-1 bg-bg-surface border border-border-default rounded-md font-mono text-xs text-text-primary outline-none focus-visible:border-accent text-right"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-medium text-text-muted">Resolution (-r)</label>
-                <input
-                  type="number"
-                  min={0.5}
-                  max={20}
-                  step={0.5}
-                  value={compilerResolution}
-                  onChange={(e) => setCompilerResolution(e.target.value)}
-                  className="w-20 px-2 py-1 bg-bg-surface border border-border-default rounded-md font-mono text-xs text-text-primary outline-none focus-visible:border-accent text-right"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-medium text-text-muted">OpenSCAD Compat</label>
-                <button
-                  role="switch"
-                  aria-checked={compatMode}
-                  aria-label="OpenSCAD compatibility mode"
-                  onClick={() => setCompatMode(!compatMode)}
-                  className={`relative w-8 h-[18px] rounded-full transition-colors ${compatMode ? 'bg-accent' : 'bg-border-strong'}`}
-                >
-                  <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform ${compatMode ? 'left-[15px]' : 'left-[2px]'}`} />
-                </button>
-              </div>
-
-            </div>
-          </div>
-        )}
+    <>
+      {/* Left top — grid & wireframe toggles */}
+      <div className="absolute top-2 left-2 flex flex-col gap-px p-1 bg-bg-base/80 rounded-lg border border-border-default/60 shadow-sm backdrop-blur-md">
+        <ToggleBtn label="XY" title="Grid XY (floor)" active={gridXY} onClick={toggleGridXY} />
+        <ToggleBtn label="XZ" title="Grid XZ (front wall)" active={gridXZ} onClick={toggleGridXZ} />
+        <ToggleBtn label="YZ" title="Grid YZ (side wall)" active={gridYZ} onClick={toggleGridYZ} />
+        <div className="h-px w-full bg-border-default/50 my-0.5" />
+        <ToggleBtn label="W" title="Wireframe" active={wireframe} onClick={toggleWireframe} />
       </div>
-    </div>
+
+      {/* Right top — actions */}
+      <div className="absolute top-2 right-2 flex flex-col gap-px p-1 bg-bg-base/80 rounded-lg border border-border-default/60 shadow-sm backdrop-blur-md">
+        <ActionBtn icon={<RotateCcw size={13} />} title="Reset View" onClick={() => setCameraPreset('reset')} />
+        <ActionBtn icon={<Download size={13} />} title="Export STL" onClick={handleExport} />
+        <ActionBtn icon={<Camera size={13} />} title="Screenshot" onClick={handleScreenshot} />
+        <div className="h-px w-full bg-border-default/50 my-0.5" />
+
+        {/* Settings popover */}
+        <div className="relative" ref={settingsRef}>
+          <ActionBtn
+            icon={<Settings size={13} />}
+            title="Render Settings"
+            active={settingsOpen}
+            onClick={() => setSettingsOpen(!settingsOpen)}
+          />
+
+          {settingsOpen && (
+            <div className="absolute top-0 right-full mr-2 w-52 bg-bg-base/95 rounded-lg border border-border-default shadow-lg backdrop-blur-md animate-drop-in">
+              <div className="px-3 py-2 border-b border-border-default">
+                <label className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">Quality ($quality)</label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={resolution}
+                    onChange={(e) => setResolution(+e.target.value)}
+                    className="flex-1 h-[3px] bg-border-default rounded-sm appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-bg-base [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:bg-accent [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-bg-base [&::-moz-range-thumb]:shadow-sm [&::-moz-range-track]:bg-border-default [&::-moz-range-track]:h-[3px] [&::-moz-range-track]:rounded-sm"
+                  />
+                  <span className="font-mono text-[10px] text-accent font-medium w-14 text-right">{getQualityLabel(resolution)}</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-medium text-text-muted">$fn (segments)</label>
+                  <input
+                    type="number"
+                    min={3}
+                    max={360}
+                    placeholder="Auto"
+                    value={fnSegments ?? ''}
+                    onChange={(e) => setFnSegments(e.target.value ? Number(e.target.value) : null)}
+                    className="w-16 px-1.5 py-0.5 bg-bg-surface border border-border-default rounded font-mono text-[10px] text-text-primary outline-none focus-visible:border-accent text-right"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-medium text-text-muted">Resolution (-r)</label>
+                  <input
+                    type="number"
+                    min={0.5}
+                    max={20}
+                    step={0.5}
+                    value={compilerResolution}
+                    onChange={(e) => setCompilerResolution(e.target.value)}
+                    className="w-16 px-1.5 py-0.5 bg-bg-surface border border-border-default rounded font-mono text-[10px] text-text-primary outline-none focus-visible:border-accent text-right"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-medium text-text-muted">OpenSCAD Compat</label>
+                  <button
+                    role="switch"
+                    aria-checked={compatMode}
+                    aria-label="OpenSCAD compatibility mode"
+                    onClick={() => setCompatMode(!compatMode)}
+                    className={`relative w-7 h-4 rounded-full transition-colors ${compatMode ? 'bg-accent' : 'bg-border-strong'}`}
+                  >
+                    <span className={`absolute top-[2px] w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${compatMode ? 'left-[13px]' : 'left-[2px]'}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   )
 }
 
-function ToolBtn({ icon, title, active, onClick }: { icon: React.ReactNode; title: string; active?: boolean; onClick: () => void }) {
+/** Toggle button for grid/wireframe — shows a text label */
+function ToggleBtn({ label, title, active, onClick }: { label: string; title: string; active?: boolean; onClick: () => void }) {
   return (
     <button
       title={title}
       aria-label={title}
       onClick={onClick}
-      className={`w-10 h-10 flex items-center justify-center rounded-md border transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 ${
+      className={`h-6 px-2 flex items-center justify-center rounded text-[9px] font-mono font-bold transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 ${
         active
-          ? 'bg-accent text-white border-accent'
-          : 'bg-bg-base text-text-secondary border-border-default hover:bg-bg-raised'
+          ? 'bg-accent text-white shadow-sm'
+          : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
+      }`}
+    >
+      {label}
+    </button>
+  )
+}
+
+/** Icon action button for export/screenshot/settings */
+function ActionBtn({ icon, title, active, onClick }: { icon: React.ReactNode; title: string; active?: boolean; onClick: () => void }) {
+  return (
+    <button
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      className={`w-6 h-6 flex items-center justify-center rounded transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 ${
+        active
+          ? 'bg-accent text-white shadow-sm'
+          : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
       }`}
     >
       {icon}
