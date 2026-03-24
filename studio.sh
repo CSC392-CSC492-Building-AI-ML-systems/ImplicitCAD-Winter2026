@@ -732,11 +732,11 @@ compute_item_rows() {
   local i
   for (( i=0; i<MENU_COUNT; i++ )); do
     if [ -n "${MENU_SECTIONS[$i]}" ]; then
-      if [ "$i" -gt 0 ]; then (( row++ )); fi
-      (( row++ ))
+      if [ "$i" -gt 0 ]; then row=$(( row + 1 )); fi
+      row=$(( row + 1 ))
     fi
     ITEM_ROW[$i]=$row
-    (( row++ ))
+    row=$(( row + 1 ))
   done
   MENU_TOTAL_LINES=$(( row + 2 ))
 }
@@ -849,7 +849,67 @@ run_selection() {
   read -p "  Press Enter to continue..." _
 }
 
+# ── Fallback Menu (number input, no arrow keys) ─────────────────────────────
+
+fallback_menu() {
+  while true; do
+    detect_system
+    build_menu_state
+    show_header
+
+    local i
+    for (( i=0; i<MENU_COUNT; i++ )); do
+      if [ -n "${MENU_SECTIONS[$i]}" ]; then
+        if [ "$i" -gt 0 ]; then echo ""; fi
+        echo -e "  ${DIM}─── ${MENU_SECTIONS[$i]} ──────────────────────────────────${D}"
+      fi
+      local label="${MENU_LABELS[$i]}"
+      local desc="${MENU_DESCS[$i]}"
+      local tag="${MENU_TAGS[$i]}"
+      local disabled="${MENU_DISABLED[$i]}"
+      local num=$(( i + 1 ))
+      if [ "$i" -eq $(( MENU_COUNT - 1 )) ]; then num="q"; fi
+
+      if [ -n "$disabled" ]; then
+        printf "  ${DIM}%2s) %-18s %s${D} %b\n" "$num" "$label" "$desc" "$tag"
+      else
+        printf "  ${W}%2s)${D} ${B}%-18s${D} %s %b\n" "$num" "$label" "$desc" "$tag"
+      fi
+    done
+    echo ""
+    read -p "  Select [1-$((MENU_COUNT-1)), q]: " choice
+
+    echo ""
+    case "$choice" in
+      [1-9])
+        idx=$(( choice - 1 ))
+        if [ "$idx" -lt "$MENU_COUNT" ]; then
+          SELECTED=$idx
+          run_selection "$SELECTED"
+        fi
+        ;;
+      q|Q) echo -e "  ${DIM}Goodbye.${D}"; echo ""; exit 0 ;;
+      *) warn "Invalid option: $choice" ;;
+    esac
+
+    echo ""
+    read -p "  Press Enter to continue..." _
+  done
+}
+
+# ── Detect if terminal supports arrow-key menu ──────────────────────────────
+
+use_arrow_menu() {
+  # Need: interactive terminal + bash read -s support
+  [ -t 0 ] && [ -t 1 ] && printf "\033[6n" >/dev/null 2>&1
+}
+
 # ── Interactive Menu Loop ────────────────────────────────────────────────────
+
+if ! use_arrow_menu; then
+  fallback_menu
+  exit 0
+fi
 
 SELECTED=0
 
@@ -877,8 +937,8 @@ while true; do
 
       PREV=$SELECTED
       case "$arrow" in
-        A) (( SELECTED = (SELECTED - 1 + MENU_COUNT) % MENU_COUNT )) ;;
-        B) (( SELECTED = (SELECTED + 1) % MENU_COUNT )) ;;
+        A) SELECTED=$(( (SELECTED - 1 + MENU_COUNT) % MENU_COUNT )) ;;
+        B) SELECTED=$(( (SELECTED + 1) % MENU_COUNT )) ;;
       esac
 
       if [ "$PREV" -ne "$SELECTED" ]; then
