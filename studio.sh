@@ -80,30 +80,63 @@ detect_system() {
     COMPOSE=""
   fi
 
-  # Ollama — check both local binary and network reachability
-  OLLAMA_OK=false
+  # Ollama — local binary check
+  OLLAMA_LOCAL=false
   OLLAMA_VER="not found"
-  OLLAMA_LOCAL=false  # Binary installed locally (in WSL/macOS/Linux)
   if command -v ollama &>/dev/null; then
     OLLAMA_VER=$(ollama --version 2>/dev/null | awk '{print $NF}' || echo "installed")
-    OLLAMA_OK=true
     OLLAMA_LOCAL=true
   fi
 
-  # Ollama running? Check localhost (covers both local and Windows-host Ollama)
+  # Ollama API — auto-discover reachable URL
+  # Priority: OLLAMA_URL env > localhost > host.docker.internal > WSL Windows host IP
+  OLLAMA_URL_IN_USE=""
+  OLLAMA_API_OK=false
   OLLAMA_RUNNING=false
-  if curl -s http://localhost:11434/api/tags &>/dev/null; then
-    OLLAMA_RUNNING=true
-    # If reachable but not installed locally (e.g., Windows Ollama via WSL port forwarding)
-    if ! $OLLAMA_OK; then
+  OLLAMA_OK=false
+
+  _try_ollama_url() {
+    local url="$1"
+    if curl -sf "${url}/api/tags" --connect-timeout 2 &>/dev/null; then
+      OLLAMA_URL_IN_USE="$url"
+      OLLAMA_API_OK=true
+      OLLAMA_RUNNING=true
       OLLAMA_OK=true
-      OLLAMA_VER="remote"
+      if ! $OLLAMA_LOCAL; then
+        OLLAMA_VER="remote"
+      fi
+      return 0
     fi
+    return 1
+  }
+
+  # Try each URL in priority order
+  if [ -n "${OLLAMA_URL:-}" ]; then
+    _try_ollama_url "$OLLAMA_URL"
+  fi
+  if ! $OLLAMA_API_OK; then
+    _try_ollama_url "http://localhost:11434"
+  fi
+  if ! $OLLAMA_API_OK; then
+    _try_ollama_url "http://host.docker.internal:11434"
+  fi
+  if ! $OLLAMA_API_OK && [ "$OS_NAME" = "WSL2" ]; then
+    # WSL: try Windows host IP from /etc/resolv.conf
+    local win_ip
+    win_ip=$(grep nameserver /etc/resolv.conf 2>/dev/null | head -1 | awk '{print $2}')
+    if [ -n "$win_ip" ]; then
+      _try_ollama_url "http://${win_ip}:11434"
+    fi
+  fi
+
+  # If no API found but local binary exists, Ollama is installed but not running
+  if ! $OLLAMA_API_OK && $OLLAMA_LOCAL; then
+    OLLAMA_OK=true
   fi
 
   # HuggingFace CLI (needed for 9B/27B adapter downloads)
   HF_CLI_OK=false
-  if command -v huggingface-cli &>/dev/null; then
+  if command -v huggingface-cli &>/dev/null || command -v hf &>/dev/null; then
     HF_CLI_OK=true
   fi
 }
@@ -119,14 +152,14 @@ show_header() {
   echo ""
   echo -e "  System:  ${W}${OS_NAME} ${ARCH_NAME}${D} | RAM: ${W}${RAM_GB}GB${D} | GPU: ${W}${GPU_INFO}${D}"
   echo -e "  Docker:  ${W}${DOCKER_VER}${D} | Ollama: ${W}${OLLAMA_VER}${D}"
-  if $OLLAMA_RUNNING && $OLLAMA_LOCAL; then
-    echo -e "  Ollama:  ${G}running${D}"
-  elif $OLLAMA_RUNNING && ! $OLLAMA_LOCAL; then
-    echo -e "  Ollama:  ${G}running (Windows host)${D}"
-  elif $OLLAMA_OK; then
-    echo -e "  Ollama:  ${Y}installed but not running${D}"
+  if $OLLAMA_API_OK && $OLLAMA_LOCAL; then
+    echo -e "  Ollama:  ${G}running${D}  ${DIM}(${OLLAMA_URL_IN_USE})${D}"
+  elif $OLLAMA_API_OK; then
+    echo -e "  Ollama:  ${G}running (remote)${D}  ${DIM}(${OLLAMA_URL_IN_USE})${D}"
+  elif $OLLAMA_LOCAL; then
+    echo -e "  Ollama:  ${Y}installed but not running${D}  ${DIM}(run: ollama serve)${D}"
   else
-    echo -e "  Ollama:  ${R}✗ not installed${D}"
+    echo -e "  Ollama:  ${R}✗ not found${D}  ${DIM}(set OLLAMA_URL if running elsewhere)${D}"
   fi
   if $HF_CLI_OK; then
     echo -e "  HuggingFace CLI:  ${G}installed${D}"
@@ -216,8 +249,10 @@ ensure_ollama_running() {
 
   # Wait up to 10 seconds
   for i in $(seq 1 10); do
-    if curl -s http://localhost:11434/api/tags &>/dev/null; then
+    if curl -s "${OLLAMA_URL_IN_USE:-http://localhost:11434}/api/tags" &>/dev/null; then
       OLLAMA_RUNNING=true
+      OLLAMA_API_OK=true
+      if [ -z "$OLLAMA_URL_IN_USE" ]; then OLLAMA_URL_IN_USE="http://localhost:11434"; fi
       info "Ollama started"
       return
     fi
@@ -245,7 +280,7 @@ pull_model() {
     echo -e "  Pulling ${W}${model}${D} via API..."
     echo -e "  ${DIM}This may take a while for large models. Progress shown below.${D}"
     local http_code
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:11434/api/pull \
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST ${OLLAMA_URL_IN_USE}/api/pull \
       -H "Content-Type: application/json" \
       -d "{\"name\": \"${model}\", \"stream\": false}" \
       --max-time 600 2>&1) || true
@@ -280,7 +315,7 @@ create_model() {
     local content
     content=$(cat "$modelfile")
     local http_code
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:11434/api/create \
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST ${OLLAMA_URL_IN_USE}/api/create \
       -H "Content-Type: application/json" \
       -d "{\"name\": \"${name}\", \"modelfile\": $(printf '%s' "$content" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'), \"stream\": false}" \
       --max-time 300 2>&1) || true
@@ -325,7 +360,7 @@ has_ollama_model() {
     ollama list 2>/dev/null | grep -q "$model"
   else
     # Use API for remote Ollama (e.g., Windows host)
-    curl -s http://localhost:11434/api/tags 2>/dev/null | grep -q "\"$model"
+    curl -s "${OLLAMA_URL_IN_USE}/api/tags" 2>/dev/null | grep -q "\"$model"
   fi
 }
 
@@ -428,7 +463,7 @@ show_service_status() {
 
   echo ""
   if $OLLAMA_RUNNING; then
-    info "Ollama: running at http://localhost:11434"
+    info "Ollama: running at ${OLLAMA_URL_IN_USE:-http://localhost:11434}"
   else
     warn "Ollama: not running"
   fi
