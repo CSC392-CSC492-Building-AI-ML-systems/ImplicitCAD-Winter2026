@@ -66,18 +66,27 @@ detect_system() {
   # Docker
   DOCKER_OK=false
   DOCKER_VER="not found"
+  DOCKER_COMPOSE_VER=""
   if command -v docker &>/dev/null; then
     DOCKER_VER=$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo "unknown")
     DOCKER_OK=true
   fi
 
   # Docker Compose
+  COMPOSE=""
   if docker compose version &>/dev/null; then
     COMPOSE="docker compose"
+    DOCKER_COMPOSE_VER=$(docker compose version --short 2>/dev/null || echo "")
   elif command -v docker-compose &>/dev/null; then
     COMPOSE="docker-compose"
+    DOCKER_COMPOSE_VER=$(docker-compose version --short 2>/dev/null || echo "")
+  fi
+
+  # Disk space (GB free)
+  if [ "$OS" = "Darwin" ]; then
+    DISK_FREE_GB=$(df -g / 2>/dev/null | tail -1 | awk '{print $4}' || echo "?")
   else
-    COMPOSE=""
+    DISK_FREE_GB=$(df -BG / 2>/dev/null | tail -1 | awk '{gsub(/G/,""); print $4}' || echo "?")
   fi
 
   # Ollama — local binary check
@@ -159,8 +168,8 @@ show_header() {
   echo -e "${C}║${W}        ImplicitCAD Studio                            ${C}║${D}"
   echo -e "${C}╚══════════════════════════════════════════════════════╝${D}"
   echo ""
-  echo -e "  System:  ${W}${OS_NAME} ${ARCH_NAME}${D} | RAM: ${W}${RAM_GB}GB${D} | GPU: ${W}${GPU_INFO}${D}"
-  echo -e "  Docker:  ${W}${DOCKER_VER}${D} | Ollama: ${W}${OLLAMA_VER}${D}"
+  echo -e "  System:  ${W}${OS_NAME} ${ARCH_NAME}${D} | RAM: ${W}${RAM_GB}GB${D} | Disk: ${W}${DISK_FREE_GB}GB free${D} | GPU: ${W}${GPU_INFO}${D}"
+  echo -e "  Docker:  ${W}${DOCKER_VER}${D} | Compose: ${W}${DOCKER_COMPOSE_VER:-not found}${D} | Ollama: ${W}${OLLAMA_VER}${D}"
   if $OLLAMA_API_OK && $OLLAMA_LOCAL; then
     echo -e "  Ollama:  ${G}running${D}  ${DIM}(${OLLAMA_URL_IN_USE})${D}"
   elif $OLLAMA_API_OK; then
@@ -180,6 +189,52 @@ show_header() {
   echo -e "  ${DIM}The fine-tuned 9B/27B models use LoRA adapters hosted on HuggingFace.${D}"
   echo -e "  ${DIM}The CLI is required to download them. Not needed for the 0.8B test model.${D}"
   echo ""
+  # System requirements summary
+  echo -e "  ${DIM}─── Requirements ───────────────────────────────────────${D}"
+  echo -e "  ${DIM}Docker services use ~200MB RAM + ~2GB disk (images)${D}"
+  echo -e "  ${DIM}0.8B test model: ~1GB disk, ~1GB RAM    (any machine)${D}"
+  echo -e "  ${DIM}9B  production:  ~6GB disk, ~6GB RAM    (8GB+ total recommended)${D}"
+  echo -e "  ${DIM}27B advanced:    ~17GB disk, ~17GB RAM   (32GB+ total recommended)${D}"
+  # Warnings based on actual system
+  if [ "$RAM_GB" -lt 4 ] 2>/dev/null; then
+    echo -e "  ${R}⚠ ${RAM_GB}GB RAM is below minimum (4GB). Docker + 0.8B model may not fit.${D}"
+  elif [ "$RAM_GB" -lt 8 ] 2>/dev/null; then
+    echo -e "  ${Y}! ${RAM_GB}GB RAM: 0.8B test model OK, 9B will be tight, 27B won't fit.${D}"
+  elif [ "$RAM_GB" -lt 16 ] 2>/dev/null; then
+    echo -e "  ${DIM}${RAM_GB}GB RAM: 0.8B and 9B OK, 27B not recommended.${D}"
+  fi
+  if [ "$DISK_FREE_GB" != "?" ] && [ "$DISK_FREE_GB" -lt 5 ] 2>/dev/null; then
+    echo -e "  ${R}⚠ Only ${DISK_FREE_GB}GB disk free. Need at least 5GB for Docker images + models.${D}"
+  fi
+  echo ""
+}
+
+# ── Version Checks ──────────────────────────────────────────────────────────
+
+check_versions() {
+  local warnings=0
+
+  # Docker version check (minimum 20.x)
+  if $DOCKER_OK && [ "$DOCKER_VER" != "unknown" ]; then
+    local docker_major
+    docker_major=$(echo "$DOCKER_VER" | cut -d. -f1)
+    if [ "$docker_major" -lt 20 ] 2>/dev/null; then
+      warn "Docker $DOCKER_VER is old. Version 20+ recommended."
+      warnings=$((warnings + 1))
+    fi
+  fi
+
+  # Ollama version check (minimum 0.5.x for safetensors adapter support)
+  if $OLLAMA_LOCAL && [ "$OLLAMA_VER" != "not found" ] && [ "$OLLAMA_VER" != "remote" ]; then
+    local ollama_minor
+    ollama_minor=$(echo "$OLLAMA_VER" | cut -d. -f2)
+    if [ "$ollama_minor" -lt 5 ] 2>/dev/null; then
+      warn "Ollama $OLLAMA_VER is old. Version 0.5+ needed for LoRA adapter support."
+      warnings=$((warnings + 1))
+    fi
+  fi
+
+  return 0
 }
 
 # ── Ollama Install ───────────────────────────────────────────────────────────
@@ -207,6 +262,7 @@ install_ollama() {
             brew install ollama
             info "Ollama installed"
             OLLAMA_OK=true
+            OLLAMA_LOCAL=true
           else
             fail "Homebrew not found. Install Ollama from https://ollama.com/download"
           fi
@@ -223,6 +279,7 @@ install_ollama() {
           curl -fsSL https://ollama.com/install.sh | sh
           info "Ollama installed"
           OLLAMA_OK=true
+          OLLAMA_LOCAL=true
           ;;
       esac
       ;;
@@ -256,11 +313,19 @@ ensure_ollama_running() {
 
   echo -e "  Starting Ollama..."
   ollama serve &>/dev/null &
+  local ollama_pid=$!
   disown
 
-  # Wait up to 10 seconds
+  # Verify process didn't crash immediately
+  sleep 1
+  if ! kill -0 "$ollama_pid" 2>/dev/null; then
+    fail "Ollama process exited immediately. Check 'ollama serve' manually for errors."
+    return 1
+  fi
+
+  # Wait up to 10 seconds for API
   for i in $(seq 1 10); do
-    if curl -s "${OLLAMA_URL_IN_USE:-http://localhost:11434}/api/tags" &>/dev/null; then
+    if curl -sf "${OLLAMA_URL_IN_USE:-http://localhost:11434}/api/tags" --connect-timeout 2 --max-time 3 &>/dev/null; then
       OLLAMA_RUNNING=true
       OLLAMA_API_OK=true
       if [ -z "$OLLAMA_URL_IN_USE" ]; then OLLAMA_URL_IN_USE="http://localhost:11434"; fi
@@ -313,13 +378,52 @@ create_model() {
     return 1
   fi
 
+  # On WSL with Windows ollama.exe: convert paths so Windows can read them
+  local actual_modelfile="$modelfile"
+  if [ "$OS_NAME" = "WSL2" ] && command -v wslpath &>/dev/null; then
+    # Check if ollama is actually Windows exe (not native Linux)
+    local ollama_path
+    ollama_path=$(command -v ollama 2>/dev/null || true)
+    if echo "$ollama_path" | grep -qi "mnt/c\|windows\|\.exe" 2>/dev/null || \
+       file "$(command -v ollama 2>/dev/null)" 2>/dev/null | grep -qi "PE32\|Windows"; then
+      # Create a temp Modelfile with Windows-converted ADAPTER paths
+      local tmp_modelfile
+      tmp_modelfile=$(mktemp /tmp/Modelfile.XXXXXX)
+      while IFS= read -r line; do
+        if echo "$line" | grep -q "^ADAPTER "; then
+          local adapter_relpath
+          adapter_relpath=$(echo "$line" | sed 's/^ADAPTER //')
+          # Resolve relative to original Modelfile's directory
+          local modelfile_dir
+          modelfile_dir=$(cd "$(dirname "$modelfile")" && pwd)
+          local adapter_abspath="${modelfile_dir}/${adapter_relpath}"
+          if [ -d "$adapter_abspath" ]; then
+            local win_path
+            win_path=$(wslpath -w "$adapter_abspath")
+            echo "ADAPTER ${win_path}"
+          else
+            echo "$line"
+          fi
+        else
+          echo "$line"
+        fi
+      done < "$modelfile" > "$tmp_modelfile"
+      # Also convert the Modelfile path itself
+      actual_modelfile=$(wslpath -w "$tmp_modelfile")
+      echo -e "  ${DIM}WSL detected: converting paths for Windows Ollama${D}"
+    fi
+  fi
+
   if $OLLAMA_LOCAL; then
-    # Local binary available — use CLI
-    echo -e "  Creating ${W}${name}${D} from ${modelfile}..."
-    if ! ollama create "$name" -f "$modelfile"; then
+    echo -e "  Creating ${W}${name}${D}..."
+    if ! ollama create "$name" -f "$actual_modelfile"; then
       fail "Failed to create $name"
+      # Clean up temp file if we created one
+      if [ "$actual_modelfile" != "$modelfile" ]; then rm -f "$tmp_modelfile" 2>/dev/null; fi
       return 1
     fi
+    # Clean up temp file
+    if [ "$actual_modelfile" != "$modelfile" ]; then rm -f "$tmp_modelfile" 2>/dev/null; fi
   else
     # Remote Ollama — use HTTP API with Modelfile content
     echo -e "  Creating ${W}${name}${D} via API..."
@@ -449,7 +553,8 @@ start_studio() {
   fi
 
   # Create workspace
-  mkdir -p "${WORKSPACE_DIR:-./_workspace}"
+  export WORKSPACE_DIR="${WORKSPACE_DIR:-${SCRIPT_DIR}/_workspace}"
+  mkdir -p "$WORKSPACE_DIR"
 
   echo -e "  Starting ImplicitCAD Studio..."
   $COMPOSE up -d --build
@@ -479,7 +584,7 @@ show_service_status() {
   if [ -n "$COMPOSE" ]; then
     $COMPOSE ps 2>/dev/null || echo "  No services running."
   else
-    warn "docker compose not available"
+    warn "Docker Compose not available"
   fi
 
   echo ""
@@ -926,7 +1031,7 @@ run_selection() {
 
   # Block disabled items
   if [ -n "${MENU_DISABLED[$sel]}" ]; then
-    printf "\033[%d;1H" "$MENU_END_ROW"
+    clear
     echo ""
     local label="${MENU_LABELS[$sel]}"
     if ! $DOCKER_OK && ! $OLLAMA_OK; then
@@ -951,7 +1056,8 @@ run_selection() {
     return
   fi
 
-  printf "\033[%d;1H" "$MENU_END_ROW"
+  # Clear screen before running commands — avoids garbled ANSI positioning
+  clear
   echo ""
   case "$sel" in
     0) setup_quickstart ;;
@@ -1036,8 +1142,17 @@ while true; do
   build_menu_state
 
   show_header
+  check_versions
 
-  MENU_START_ROW=13
+  # Query actual cursor position after header (avoids hardcoding row count)
+  # Save cursor position, then read it
+  local _cursor_row=""
+  IFS=';' read -rs -d R -p $'\033[6n' _cursor_row _ 2>/dev/null || true
+  if [ -n "$_cursor_row" ]; then
+    MENU_START_ROW=${_cursor_row#*[}
+  else
+    MENU_START_ROW=20  # Safe fallback if cursor query fails
+  fi
 
   draw_menu_full "$SELECTED"
 
