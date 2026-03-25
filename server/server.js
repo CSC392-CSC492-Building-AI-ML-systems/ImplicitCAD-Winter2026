@@ -221,6 +221,10 @@ function getModelProfile(model) {
   return MODEL_PROFILES[base] || DEFAULT_PROFILE
 }
 
+function threadContextEnabled() {
+  return process.env.DISABLE_THREAD_CONTEXT !== '1'
+}
+
 // ── Thread State (server-side session memory) ──────────────────────────────
 
 const threadState = new Map()
@@ -284,6 +288,7 @@ function buildMessages(prompt, code, sessionId) {
   const maxContext = profile.contextWindow
   const maxOutput = profile.maxOutput
   const thread = getThread(sessionId)
+  const includeThreadContext = threadContextEnabled()
 
   const messages = [{ role: 'system', content: SYSTEM_PROMPT }]
   const systemTokens = estimateTokens(SYSTEM_PROMPT)
@@ -303,7 +308,7 @@ function buildMessages(prompt, code, sessionId) {
   let budget = maxContext - systemTokens - estimateTokens(userContent) - maxOutput
 
   // Priority 2: Recent user prompts (intent context, no AI code)
-  if (thread.recentUserPrompts.length > 0 && budget > 100) {
+  if (includeThreadContext && thread.recentUserPrompts.length > 0 && budget > 100) {
     const contextBlock = thread.recentUserPrompts
       .map(p => 'User: ' + p.slice(0, 200))
       .join('\n')
@@ -315,7 +320,7 @@ function buildMessages(prompt, code, sessionId) {
   }
 
   // Priority 3: Rolling summary (lowest priority)
-  if (thread.summary && budget > 50) {
+  if (includeThreadContext && thread.summary && budget > 50) {
     const summaryText = 'Summary of earlier conversation:\n' + thread.summary
     const tokens = estimateTokens(summaryText)
     if (tokens <= budget) {
@@ -327,7 +332,7 @@ function buildMessages(prompt, code, sessionId) {
 
   // Debug: log prompt packing for remote diagnosis
   const totalEstTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0)
-  console.log(`[buildMessages] model=${activeConfig.model} msgs=${messages.length} est_tokens=${totalEstTokens}/${maxContext} output_reserve=${maxOutput} thread_prompts=${thread.recentUserPrompts.length} has_summary=${!!thread.summary}`)
+  console.log(`[buildMessages] model=${activeConfig.model} msgs=${messages.length} est_tokens=${totalEstTokens}/${maxContext} max_output=${maxOutput} thread_context=${includeThreadContext ? 'on' : 'off'} thread_prompts=${thread.recentUserPrompts.length} has_summary=${!!thread.summary}`)
 
   return messages
 }
@@ -715,7 +720,7 @@ const server = http.createServer(async (req, res) => {
 
       // Debug: log request and packed messages
       if (process.env.DEBUG_LLM_STREAM === '1') {
-        console.log(`[req:${traceId}] sessionId=${body.sessionId || 'default'} model=${activeConfig.model} prompt_len=${body.prompt.length} code_len=${(body.code || '').length} packed_msgs=${messages.length}`)
+        console.log(`[req:${traceId}] sessionId=${body.sessionId || 'default'} model=${activeConfig.model} prompt_len=${body.prompt.length} code_len=${(body.code || '').length} packed_msgs=${messages.length} thread_context=${threadContextEnabled() ? 'on' : 'off'}`)
         for (const m of messages) {
           console.log(`  [req:${traceId}] [${m.role}] (${m.content.length} chars) ${m.content.slice(0, 120).replace(/\n/g, '\\n')}...`)
         }

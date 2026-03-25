@@ -34,6 +34,7 @@ services:
       - ACTIVE_PROVIDER=${ACTIVE_PROVIDER:-ollama}
       - ACTIVE_MODEL=${ACTIVE_MODEL:-}
       - DEBUG_LLM_STREAM=${DEBUG_LLM_STREAM:-0}
+      - DISABLE_THREAD_CONTEXT=${DISABLE_THREAD_CONTEXT:-0}
     volumes:
       - ${WORKSPACE_DIR:-./_workspace}:/workspace
       - implicitcad-bin:/opt/implicitcad-bin:ro
