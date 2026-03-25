@@ -207,7 +207,9 @@ export function ChatPanel() {
                     finalizeStream()
                   }
                 } else if (data.token) {
-                  appendStreamToken(data.token)
+                  // Don't show raw streaming tokens — model output is often messy
+                  // (prompt echo, thinking text, template artifacts).
+                  // Only the final extracted code (data.code on done) is shown to the user.
                 }
               } catch {}
             }
