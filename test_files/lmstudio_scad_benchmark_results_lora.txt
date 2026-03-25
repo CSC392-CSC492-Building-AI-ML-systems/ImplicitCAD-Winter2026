@@ -1,0 +1,1292 @@
+LM Studio OpenSCAD Benchmark Results
+================================================================================
+Base URL: http://localhost:12345/v1
+Model: qwen3.5-9b-openscad_gguf
+Temperature: 0.0
+Max tokens: 4096
+Cases: 30
+
+--------------------------------------------------------------------------------
+Case 1/30 | Dataset index: 0
+Status: OK
+Latency: 3.69s
+Tokens: prompt=130 completion=50 total=180
+Raw exact match: True
+Normalized exact match: True
+Extracted-code normalized match: True
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add one cube at an absolute world coordinate. Keep all existing geometry unchanged. The new cube must use corner placement (center=false), have size [4,5,6], and corner origin exactly at [0,0,0].
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([10, 0, 0]) sphere(r=1.2);
+}
+```
+
+EXPECTED
+union() {
+  translate([10, 0, 0]) sphere(r=1.2);
+  translate([0, 0, 0]) cube(size=[4,5,6], center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([10, 0, 0]) sphere(r=1.2);
+  translate([0, 0, 0]) cube(size=[4,5,6], center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 2/30 | Dataset index: 6
+Status: OK
+Latency: 1.59s
+Tokens: prompt=150 completion=74 total=224
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add a cube specified by floating-point center coordinates and floating-point size. Keep the existing geometry unchanged. Add one cube centered at [4.5,1.75,2.25] with size [1.5,2.5,3.5].
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([-3.25, 2.0, 0.0]) cylinder(r=0.9, h=3.2);
+}
+```
+
+EXPECTED
+union() {
+  translate([-3.25, 2.0, 0.0]) cylinder(r=0.9, h=3.2);
+  translate([3.75, 0.5, 0.5]) cube(size=[1.5,2.5,3.5], center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([-3.25, 2.0, 0.0]) cylinder(r=0.9, h=3.2);
+  translate([4.5,1.75,2.25]) cube(size=[1.5,2.5,3.5], center=true);
+}
+
+--------------------------------------------------------------------------------
+Case 3/30 | Dataset index: 11
+Status: OK
+Latency: 1.37s
+Tokens: prompt=147 completion=69 total=216
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add a sphere with floating-point center coordinates and floating-point radius. Keep the existing geometry unchanged. Add one sphere centered at [2.75,-1.5,3.25] with radius 1.875.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([0.5, 0.5, 0.5]) cube(size=[2.0,2.0,2.0], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([0.5, 0.5, 0.5]) cube(size=[2.0,2.0,2.0], center=false);
+  translate([2.75, -1.5, 3.25]) sphere(r=1.875);
+}
+
+MODEL OUTPUT
+union() {
+  translate([0.5, 0.5, 0.5]) cube(size=[2.0,2.0,2.0], center=false);
+  translate([2.75,-1.5,3.25]) sphere(r=1.875);
+}
+
+--------------------------------------------------------------------------------
+Case 4/30 | Dataset index: 14
+Status: OK
+Latency: 1.18s
+Tokens: prompt=139 completion=60 total=199
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add one tapered cylinder by absolute base-center coordinates. Keep all existing geometry unchanged. The new cylinder must use center=false with r1=3, r2=1.5, h=7, and base center exactly at [6,-2,0].
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([0, 9, 0]) cube(size=[2,2,1], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([0, 9, 0]) cube(size=[2,2,1], center=false);
+  translate([6, -2, 0]) cylinder(h=7, r1=3, r2=1.5, center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([0, 9, 0]) cube(size=[2,2,1], center=false);
+  translate([6,-2,0]) cylinder(r1=3, r2=1.5, h=7, center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 5/30 | Dataset index: 15
+Status: OK
+Latency: 1.08s
+Tokens: prompt=123 completion=53 total=176
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add one elliptical cylinder using scale transformation. Keep existing geometry unchanged. Base center at [1, 1, 0], radius X=3, radius Y=1.5, height 6.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([0, 0, 10]) sphere(r=2);
+}
+```
+
+EXPECTED
+union() {
+  translate([0, 0, 10]) sphere(r=2);
+  translate([1, 1, 0]) scale([3, 1.5, 1]) cylinder(r=1, h=6);
+}
+
+MODEL OUTPUT
+union() {
+  translate([0, 0, 10]) sphere(r=2);
+  translate([1, 1, 0]) cylinder(h=6, r1=3, r2=1.5);
+}
+
+--------------------------------------------------------------------------------
+Case 6/30 | Dataset index: 18
+Status: OK
+Latency: 1.80s
+Tokens: prompt=166 completion=88 total=254
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add a tapered cylinder with floating-point radii, height, and base-center coordinates. Keep the existing geometry unchanged. Add one cylinder with r1=2.4, r2=0.85, h=5.5, and base center [-3.25,2.75,0.25].
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([4.0, -1.5, 0.0]) cube(size=[2.0,2.0,2.0], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([4.0, -1.5, 0.0]) cube(size=[2.0,2.0,2.0], center=false);
+  translate([-3.25, 2.75, 0.25]) cylinder(r1=2.4, r2=0.85, h=5.5);
+}
+
+MODEL OUTPUT
+union() {
+  translate([4.0, -1.5, 0.0]) cube(size=[2.0,2.0,2.0], center=false);
+  translate([-3.25, 2.75, 0.25]) cylinder(r1=2.4, r2=0.85, h=5.5, center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 7/30 | Dataset index: 22
+Status: OK
+Latency: 1.64s
+Tokens: prompt=157 completion=79 total=236
+Raw exact match: True
+Normalized exact match: True
+Extracted-code normalized match: True
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add a cone represented by cylinder(r1, r2=0) using floating-point values. Keep the existing geometry unchanged. Add one cone with base radius 1.8, height 4.6, and base center [2.2,3.4,0.0].
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([-3.5, -3.5, 0.0]) cube(size=[3.0,3.0,3.0], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([-3.5, -3.5, 0.0]) cube(size=[3.0,3.0,3.0], center=false);
+  translate([2.2, 3.4, 0.0]) cylinder(r1=1.8, r2=0, h=4.6);
+}
+
+MODEL OUTPUT
+union() {
+  translate([-3.5, -3.5, 0.0]) cube(size=[3.0,3.0,3.0], center=false);
+  translate([2.2, 3.4, 0.0]) cylinder(r1=1.8, r2=0, h=4.6);
+}
+
+--------------------------------------------------------------------------------
+Case 8/30 | Dataset index: 26
+Status: OK
+Latency: 1.67s
+Tokens: prompt=166 completion=84 total=250
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add the torus-style proxy primitive using floating-point placement. Keep the existing geometry unchanged. Add one proxy torus primitive centered near [3.5,-2.5,1.25] using a tapered cylinder approximation with r1=2.6, r2=1.2, h=2.75.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([-2.5, 1.5, 0.0]) cube(size=[2.5,2.5,2.5], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([-2.5, 1.5, 0.0]) cube(size=[2.5,2.5,2.5], center=false);
+  translate([3.5, -2.5, 1.25]) cylinder(r1=2.6, r2=1.2, h=2.75);
+}
+
+MODEL OUTPUT
+union() {
+  translate([-2.5, 1.5, 0.0]) cube(size=[2.5,2.5,2.5], center=false);
+  translate([3.5,-2.5,1.25]) cylinder(r1=2.6,r2=1.2,h=2.75,$fn=64);
+}
+
+--------------------------------------------------------------------------------
+Case 9/30 | Dataset index: 29
+Status: OK
+Latency: 1.75s
+Tokens: prompt=166 completion=85 total=251
+Raw exact match: True
+Normalized exact match: True
+Extracted-code normalized match: True
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add a polygon extrusion with floating-point translation and radius values. Keep the existing geometry unchanged. Add a hexagon-like extrusion at [2.5,1.75,0.0] using circle(r=1.85, $fn=6) and linear_extrude(height=3.75).
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([-4.0, -1.0, 0.0]) cube(size=[3.5,3.5,2.0], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([-4.0, -1.0, 0.0]) cube(size=[3.5,3.5,2.0], center=false);
+  translate([2.5, 1.75, 0.0]) linear_extrude(height=3.75) circle(r=1.85, $fn=6);
+}
+
+MODEL OUTPUT
+union() {
+  translate([-4.0, -1.0, 0.0]) cube(size=[3.5,3.5,2.0], center=false);
+  translate([2.5, 1.75, 0.0]) linear_extrude(height=3.75) circle(r=1.85, $fn=6);
+}
+
+--------------------------------------------------------------------------------
+Case 10/30 | Dataset index: 31
+Status: OK
+Latency: 1.15s
+Tokens: prompt=131 completion=54 total=185
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add a cube on top of the existing cube, centering the new cube on the top face of the existing cube. The new cube should have the same dimensions [4,4,4] as the existing cube.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([0, 0, 0]) cube(size=[4,4,4], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([0, 0, 0]) cube(size=[4,4,4], center=false);
+  translate([0, 0, 4]) cube(size=[4,4,4], center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([0, 0, 0]) cube(size=[4,4,4], center=false);
+  translate([2, 2, 4]) cube(size=[4,4,4], center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 11/30 | Dataset index: 34
+Status: OK
+Latency: 1.58s
+Tokens: prompt=142 completion=76 total=218
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add a cylinder on top of the existing offset cube. The cylinder should have radius 0.9 and height 3.3, and its base-center should be aligned to the cube's top-right-back corner.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([-3.4, 1.2, -0.8]) cube(size=[5.5,3.5,2.7], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([-3.4, 1.2, -0.8]) cube(size=[5.5,3.5,2.7], center=false);
+  translate([2.1, 4.7, 1.9]) cylinder(h=3.3, r=0.9, center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([-3.4, 1.2, -0.8]) cube(size=[5.5,3.5,2.7], center=false);
+  translate([2.1, 4.7, 1.9]) cylinder(r=0.9, h=3.3, center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 12/30 | Dataset index: 36
+Status: OK
+Latency: 1.09s
+Tokens: prompt=128 completion=51 total=179
+Raw exact match: True
+Normalized exact match: True
+Extracted-code normalized match: True
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add a sphere above the existing cylinder such that the sphere is tangent to the cylinder's top face. The sphere should have radius 1.5 and touch the cylinder's top face at exactly one point.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([0, 0, 0]) cylinder(h=4, r=2, center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([0, 0, 0]) cylinder(h=4, r=2, center=false);
+  translate([0, 0, 5.5]) sphere(r=1.5);
+}
+
+MODEL OUTPUT
+union() {
+  translate([0, 0, 0]) cylinder(h=4, r=2, center=false);
+  translate([0, 0, 5.5]) sphere(r=1.5);
+}
+
+--------------------------------------------------------------------------------
+Case 13/30 | Dataset index: 41
+Status: OK
+Latency: 1.22s
+Tokens: prompt=125 completion=58 total=183
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add a cylinder beside the existing cylinder, positioned so it touches the side of the target cylinder along the x-axis. The new cylinder should have height 4 and radius 1.5.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([0, 0, 0]) cylinder(h=4, r=2, center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([0, 0, 0]) cylinder(h=4, r=2, center=false);
+  translate([3.5, 0, 0]) cylinder(h=4, r=1.5, center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([0, 0, 0]) cylinder(h=4, r=2, center=false);
+  translate([-3.5, 0, 0]) cylinder(h=4, r=1.5, center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 14/30 | Dataset index: 44
+Status: OK
+Latency: 1.22s
+Tokens: prompt=125 completion=59 total=184
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add a sphere beside the existing offset sphere along the positive y-axis with a 0.55 unit gap between surfaces. The new sphere should have radius 0.9.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([-1.75, 2.4, 0.5]) sphere(r=1.3);
+}
+```
+
+EXPECTED
+union() {
+  translate([-1.75, 2.4, 0.5]) sphere(r=1.3);
+  translate([-1.75, 5.15, 0.5]) sphere(r=0.9);
+}
+
+MODEL OUTPUT
+union() {
+  translate([-1.75, 2.4, 0.5]) sphere(r=1.3);
+  translate([-1.75, 2.95, 0.5]) sphere(r=0.9);
+}
+
+--------------------------------------------------------------------------------
+Case 15/30 | Dataset index: 47
+Status: OK
+Latency: 1.22s
+Tokens: prompt=129 completion=58 total=187
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add a cylinder below the existing cube, centered under the cube's bottom face. The cylinder should have radius 1.5, height 4, and its top face should touch the cube's bottom face.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([0, 0, 0]) cube(size=[6,6,6], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([0, 0, 0]) cube(size=[6,6,6], center=false);
+  translate([3, 3, -4]) cylinder(h=4, r=1.5, center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([0, 0, 0]) cube(size=[6,6,6], center=false);
+  translate([1.5, 3, -4]) cylinder(r=1.5, h=4, center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 16/30 | Dataset index: 49
+Status: OK
+Latency: 1.90s
+Tokens: prompt=145 completion=94 total=239
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add a sphere below the existing offset cube, centered in x and y to the cube, with a 0.4 unit gap from the cube's bottom face. The new sphere should have radius 1.05.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([-5.0, 1.75, 2.6]) cube(size=[3.4,2.8,1.6], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([-5.0, 1.75, 2.6]) cube(size=[3.4,2.8,1.6], center=false);
+  translate([-3.3, 3.15, 1.15]) sphere(r=1.05);
+}
+
+MODEL OUTPUT
+union() {
+  translate([-5.0, 1.75, 2.6]) cube(size=[3.4,2.8,1.6], center=false);
+  translate([-5.0 + (3.4/2), 1.75 + (2.8/2), 2.6 - 1.6 - 0.4]) sphere(r=1.05);
+}
+
+--------------------------------------------------------------------------------
+Case 17/30 | Dataset index: 50
+Status: OK
+Latency: 4.31s
+Tokens: prompt=318 completion=222 total=540
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Complete the pattern: this should be a full 3 by 3 grid of cubes on the XY plane at z=0. Each cube is size [2,2,2], and origins are spaced by 4 units in x and y. One cube is missing at the center. Add the missing cube.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([0, 0, 0]) cube(size=[2,2,2], center=false);
+  translate([4, 0, 0]) cube(size=[2,2,2], center=false);
+  translate([8, 0, 0]) cube(size=[2,2,2], center=false);
+
+  translate([0, 4, 0]) cube(size=[2,2,2], center=false);
+  translate([8, 4, 0]) cube(size=[2,2,2], center=false);
+
+  translate([0, 8, 0]) cube(size=[2,2,2], center=false);
+  translate([4, 8, 0]) cube(size=[2,2,2], center=false);
+  translate([8, 8, 0]) cube(size=[2,2,2], center=false);
+}
+```
+
+EXPECTED
+// Completed 3x3 grid.
+union() {
+  translate([0, 0, 0]) cube(size=[2,2,2], center=false);
+  translate([4, 0, 0]) cube(size=[2,2,2], center=false);
+  translate([8, 0, 0]) cube(size=[2,2,2], center=false);
+
+  translate([0, 4, 0]) cube(size=[2,2,2], center=false);
+  translate([4, 4, 0]) cube(size=[2,2,2], center=false);
+  translate([8, 4, 0]) cube(size=[2,2,2], center=false);
+
+  translate([0, 8, 0]) cube(size=[2,2,2], center=false);
+  translate([4, 8, 0]) cube(size=[2,2,2], center=false);
+  translate([8, 8, 0]) cube(size=[2,2,2], center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([0, 0, 0]) cube(size=[2,2,2], center=false);
+  translate([4, 0, 0]) cube(size=[2,2,2], center=false);
+  translate([8, 0, 0]) cube(size=[2,2,2], center=false);
+
+  translate([0, 4, 0]) cube(size=[2,2,2], center=false);
+  translate([4, 4, 0]) cube(size=[2,2,2], center=false);
+  translate([8, 4, 0]) cube(size=[2,2,2], center=false);
+
+  translate([0, 8, 0]) cube(size=[2,2,2], center=false);
+  translate([4, 8, 0]) cube(size=[2,2,2], center=false);
+  translate([8, 8, 0]) cube(size=[2,2,2], center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 18/30 | Dataset index: 51
+Status: OK
+Latency: 1.33s
+Tokens: prompt=206 completion=65 total=271
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+There should be a complete 4 by 4 grid of cubes on z=0, with cube size [2,2,2] and step 4 in both x and y. One off-center cell is missing at grid index (3,2) using zero-based indices. Add the missing cube to complete the grid.
+
+Existing OpenSCAD:
+```scad
+union() {
+  for (ix = [0:3]) {
+    for (iy = [0:3]) {
+      if (!(ix == 3 && iy == 2)) {
+        translate([ix * 4, iy * 4, 0]) cube(size=[2,2,2], center=false);
+      }
+    }
+  }
+}
+```
+
+EXPECTED
+// Completed 4x4 grid.
+union() {
+  for (ix = [0:3]) {
+    for (iy = [0:3]) {
+      translate([ix * 4, iy * 4, 0]) cube(size=[2,2,2], center=false);
+    }
+  }
+}
+
+MODEL OUTPUT
+union() {
+  for (ix = [0:3]) {
+    for (iy = [0:3]) {
+      translate([ix * 4, iy * 4, 0]) cube(size=[2,2,2], center=false);
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+Case 19/30 | Dataset index: 54
+Status: OK
+Latency: 1.93s
+Tokens: prompt=256 completion=92 total=348
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Complete the pattern as a full 3 by 4 grid of cubes on z=1.25. Cube size is [1.5,1.5,1.5]. Origins use step 3.25 in x and 2.75 in y, starting from [18.5, 26.25, 1.25]. One corner cube is missing. Add the missing cube.
+
+Existing OpenSCAD:
+```scad
+union() {
+  for (ix = [0:2]) {
+    for (iy = [0:3]) {
+      if (!(ix == 2 && iy == 3)) {
+        translate([18.5 + ix * 3.25, 26.25 + iy * 2.75, 1.25]) cube(size=[1.5,1.5,1.5], center=false);
+      }
+    }
+  }
+}
+```
+
+EXPECTED
+union() {
+  for (ix = [0:2]) {
+    for (iy = [0:3]) {
+      translate([18.5 + ix * 3.25, 26.25 + iy * 2.75, 1.25]) cube(size=[1.5,1.5,1.5], center=false);
+    }
+  }
+}
+
+MODEL OUTPUT
+union() {
+  for (ix = [0:3]) {
+    for (iy = [0:4]) {
+      translate([18.5 + ix * 3.25, 26.25 + iy * 2.75, 1.25]) cube(size=[1.5,1.5,1.5], center=false);
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+Case 20/30 | Dataset index: 56
+Status: OK
+Latency: 1.99s
+Tokens: prompt=179 completion=97 total=276
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+This model should be an 8-step staircase made of identical cubes. Step i has origin [i*3, 0, i*2], cube size [2,6,2], for i=0..7. One middle step is missing. Find and add the missing step.
+
+Existing OpenSCAD:
+```scad
+union() {
+  for (i = [0:7]) {
+    if (i != 4) {
+      translate([i * 3, 0, i * 2]) cube(size=[2,6,2], center=false);
+    }
+  }
+}
+```
+
+EXPECTED
+// Completed staircase.
+union() {
+  for (i = [0:7]) {
+    translate([i * 3, 0, i * 2]) cube(size=[2,6,2], center=false);
+  }
+}
+
+MODEL OUTPUT
+union() {
+  for (i = [0:7]) {
+    if (i != 4) {
+      translate([i * 3, 0, i * 2]) cube(size=[2,6,2], center=false);
+    } else {
+      translate([i * 3, 0, i * 2]) cube(size=[2,6,2], center=false);
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+Case 21/30 | Dataset index: 60
+Status: OK
+Latency: 1.57s
+Tokens: prompt=224 completion=74 total=298
+Raw exact match: True
+Normalized exact match: True
+Extracted-code normalized match: True
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+This model should be a 6-step staircase made of identical blocks. Step i has origin [22.4 + i*2.8, 14.6, 1.4 + i*1.35], block size [1.6,4.2,1.1], for i=0..5. One step is missing. Add the missing step.
+
+Existing OpenSCAD:
+```scad
+union() {
+  for (i = [0:5]) {
+    if (i != 3) {
+      translate([22.4 + i * 2.8, 14.6, 1.4 + i * 1.35]) cube(size=[1.6,4.2,1.1], center=false);
+    }
+  }
+}
+```
+
+EXPECTED
+union() {
+  for (i = [0:5]) {
+    translate([22.4 + i * 2.8, 14.6, 1.4 + i * 1.35]) cube(size=[1.6,4.2,1.1], center=false);
+  }
+}
+
+MODEL OUTPUT
+union() {
+  for (i = [0:5]) {
+    translate([22.4 + i * 2.8, 14.6, 1.4 + i * 1.35]) cube(size=[1.6,4.2,1.1], center=false);
+  }
+}
+
+--------------------------------------------------------------------------------
+Case 22/30 | Dataset index: 62
+Status: OK
+Latency: 1.49s
+Tokens: prompt=175 completion=74 total=249
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+The shape should be mirror-symmetric across x=0 for all spheres (same radius). Existing sphere centers are (-6,3,0), (6,3,0), and (9,-5,0), with r=2. Add the missing mirrored sphere to complete x=0 symmetry.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([-6, 3, 0]) sphere(r=2);
+  translate([6, 3, 0]) sphere(r=2);
+  translate([9, -5, 0]) sphere(r=2);
+}
+```
+
+EXPECTED
+// Completed x=0 mirror symmetry.
+union() {
+  translate([-6, 3, 0]) sphere(r=2);
+  translate([6, 3, 0]) sphere(r=2);
+  translate([9, -5, 0]) sphere(r=2);
+  translate([-9, -5, 0]) sphere(r=2);
+}
+
+MODEL OUTPUT
+union() {
+  translate([-6, 3, 0]) sphere(r=2);
+  translate([6, 3, 0]) sphere(r=2);
+  translate([9, -5, 0]) sphere(r=2);
+  translate([-9, -5, 0]) sphere(r=2);
+}
+
+--------------------------------------------------------------------------------
+Case 23/30 | Dataset index: 67
+Status: OK
+Latency: 3.10s
+Tokens: prompt=269 completion=154 total=423
+Raw exact match: True
+Normalized exact match: True
+Extracted-code normalized match: True
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+The model should have four-quadrant symmetry across x=0 and y=0 using identical cylinders with r=1.8 and h=4.75. Existing base centers are [16.4, 27.2, 1.1], [-16.4, 27.2, 1.1], and [16.4, -27.2, 1.1]. Add the missing cylinder.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([16.4, 27.2, 1.1]) cylinder(r=1.8, h=4.75, center=false);
+  translate([-16.4, 27.2, 1.1]) cylinder(r=1.8, h=4.75, center=false);
+  translate([16.4, -27.2, 1.1]) cylinder(r=1.8, h=4.75, center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([16.4, 27.2, 1.1]) cylinder(r=1.8, h=4.75, center=false);
+  translate([-16.4, 27.2, 1.1]) cylinder(r=1.8, h=4.75, center=false);
+  translate([16.4, -27.2, 1.1]) cylinder(r=1.8, h=4.75, center=false);
+  translate([-16.4, -27.2, 1.1]) cylinder(r=1.8, h=4.75, center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([16.4, 27.2, 1.1]) cylinder(r=1.8, h=4.75, center=false);
+  translate([-16.4, 27.2, 1.1]) cylinder(r=1.8, h=4.75, center=false);
+  translate([16.4, -27.2, 1.1]) cylinder(r=1.8, h=4.75, center=false);
+  translate([-16.4, -27.2, 1.1]) cylinder(r=1.8, h=4.75, center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 24/30 | Dataset index: 71
+Status: OK
+Latency: 2.88s
+Tokens: prompt=240 completion=142 total=382
+Raw exact match: False
+Normalized exact match: False
+Extracted-code normalized match: False
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+There should be 8 corner spheres (r=1) at the corners of a box with x in {-6,6}, y in {-4,4}, z in {0,8}. One corner sphere is missing at (-6,-4,8). Add the missing sphere.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([-6, -4, 0]) sphere(r=1);
+  translate([6, -4, 0]) sphere(r=1);
+  translate([-6, 4, 0]) sphere(r=1);
+  translate([6, 4, 0]) sphere(r=1);
+
+  translate([6, -4, 8]) sphere(r=1);
+  translate([-6, 4, 8]) sphere(r=1);
+  translate([6, 4, 8]) sphere(r=1);
+}
+```
+
+EXPECTED
+// Completed 8-corner sphere skeleton.
+union() {
+  // z = 0 layer
+  translate([-6, -4, 0]) sphere(r=1);
+  translate([6, -4, 0]) sphere(r=1);
+  translate([-6, 4, 0]) sphere(r=1);
+  translate([6, 4, 0]) sphere(r=1);
+
+  // z = 8 layer
+  translate([-6, -4, 8]) sphere(r=1);
+  translate([6, -4, 8]) sphere(r=1);
+  translate([-6, 4, 8]) sphere(r=1);
+  translate([6, 4, 8]) sphere(r=1);
+}
+
+MODEL OUTPUT
+union() {
+  translate([-6, -4, 0]) sphere(r=1);
+  translate([6, -4, 0]) sphere(r=1);
+  translate([-6, 4, 0]) sphere(r=1);
+  translate([6, 4, 0]) sphere(r=1);
+
+  translate([6, -4, 8]) sphere(r=1);
+  translate([-6, 4, 8]) sphere(r=1);
+  translate([6, 4, 8]) sphere(r=1);
+  translate([-6, -4, 8]) sphere(r=1);
+}
+
+--------------------------------------------------------------------------------
+Case 25/30 | Dataset index: 73
+Status: OK
+Latency: 4.84s
+Tokens: prompt=367 completion=243 total=610
+Raw exact match: True
+Normalized exact match: True
+Extracted-code normalized match: True
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Complete the barcode pattern offset from the origin. There should be 6 vertical bars starting at x=28.5, y=17.75, z=0.9 with x step 2.35. Each bar has size [1.1,1.6,h]. Heights from left to right are [2.4, 5.1, 3.3, 6.2, 4.4, 2.8]. One bar is missing. Add the missing bar.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([28.5, 17.75, 0.9]) cube(size=[1.1,1.6,2.4], center=false);
+  translate([30.85, 17.75, 0.9]) cube(size=[1.1,1.6,5.1], center=false);
+  translate([33.2, 17.75, 0.9]) cube(size=[1.1,1.6,3.3], center=false);
+  translate([37.9, 17.75, 0.9]) cube(size=[1.1,1.6,4.4], center=false);
+  translate([40.25, 17.75, 0.9]) cube(size=[1.1,1.6,2.8], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([28.5, 17.75, 0.9]) cube(size=[1.1,1.6,2.4], center=false);
+  translate([30.85, 17.75, 0.9]) cube(size=[1.1,1.6,5.1], center=false);
+  translate([33.2, 17.75, 0.9]) cube(size=[1.1,1.6,3.3], center=false);
+  translate([35.55, 17.75, 0.9]) cube(size=[1.1,1.6,6.2], center=false);
+  translate([37.9, 17.75, 0.9]) cube(size=[1.1,1.6,4.4], center=false);
+  translate([40.25, 17.75, 0.9]) cube(size=[1.1,1.6,2.8], center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([28.5, 17.75, 0.9]) cube(size=[1.1,1.6,2.4], center=false);
+  translate([30.85, 17.75, 0.9]) cube(size=[1.1,1.6,5.1], center=false);
+  translate([33.2, 17.75, 0.9]) cube(size=[1.1,1.6,3.3], center=false);
+  translate([35.55, 17.75, 0.9]) cube(size=[1.1,1.6,6.2], center=false);
+  translate([37.9, 17.75, 0.9]) cube(size=[1.1,1.6,4.4], center=false);
+  translate([40.25, 17.75, 0.9]) cube(size=[1.1,1.6,2.8], center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 26/30 | Dataset index: 76
+Status: OK
+Latency: 2.40s
+Tokens: prompt=200 completion=118 total=318
+Raw exact match: True
+Normalized exact match: True
+Extracted-code normalized match: True
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add one cylinder fully inside the current bounding box so the overall bounding box does not change. The new cylinder should have base center at [29.4, 20.8, 3.7], radius 1.2, and height 2.6. Add only this cylinder.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([23.6, 16.4, 2.1]) cube(size=[9.4,7.8,5.9], center=false);
+  translate([33.9, 18.7, 2.8]) cube(size=[4.9,6.5,4.8], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([23.6, 16.4, 2.1]) cube(size=[9.4,7.8,5.9], center=false);
+  translate([33.9, 18.7, 2.8]) cube(size=[4.9,6.5,4.8], center=false);
+  translate([29.4, 20.8, 3.7]) cylinder(r=1.2, h=2.6, center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([23.6, 16.4, 2.1]) cube(size=[9.4,7.8,5.9], center=false);
+  translate([33.9, 18.7, 2.8]) cube(size=[4.9,6.5,4.8], center=false);
+  translate([29.4, 20.8, 3.7]) cylinder(r=1.2, h=2.6, center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 27/30 | Dataset index: 86
+Status: OK
+Latency: 2.48s
+Tokens: prompt=238 completion=123 total=361
+Raw exact match: True
+Normalized exact match: True
+Extracted-code normalized match: True
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Add one cube so that the final scene hits the target bbox edge defined by max x = 44.85 and max y = 39.10 exactly, while staying within the current z range. The new cube should have lower-left-bottom corner at [41.65, 36.85, 3.00] and size [3.20, 2.25, 2.10]. Add only this cube.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([27.5, 22.4, 2.3]) cube(size=[8.1,7.2,5.8], center=false);
+  translate([36.2, 24.1, 3.1]) cube(size=[4.9,8.4,4.4], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([27.5, 22.4, 2.3]) cube(size=[8.1,7.2,5.8], center=false);
+  translate([36.2, 24.1, 3.1]) cube(size=[4.9,8.4,4.4], center=false);
+  translate([41.65, 36.85, 3.0]) cube(size=[3.2,2.25,2.1], center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([27.5, 22.4, 2.3]) cube(size=[8.1,7.2,5.8], center=false);
+  translate([36.2, 24.1, 3.1]) cube(size=[4.9,8.4,4.4], center=false);
+  translate([41.65, 36.85, 3.0]) cube(size=[3.2,2.25,2.1], center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 28/30 | Dataset index: 94
+Status: OK
+Latency: 3.97s
+Tokens: prompt=342 completion=200 total=542
+Raw exact match: True
+Normalized exact match: True
+Extracted-code normalized match: True
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Complete the arrangement: this should be a line of 6 identical tapered cylinders along the x axis. Each primitive is cylinder(r1=1.2, r2=0.6, h=3) with base centers at [0,10,0], [3,10,0], [6,10,0], [9,10,0], [12,10,0], and [15,10,0]. The tapered cylinder at [12,10,0] is missing. Add the missing primitive.
+
+Existing OpenSCAD:
+```scad
+union() {
+	translate([0, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([3, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([6, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([9, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([15, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+}
+```
+
+EXPECTED
+union() {
+	translate([0, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([3, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([6, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([9, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([12, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([15, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+}
+
+MODEL OUTPUT
+union() {
+	translate([0, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([3, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([6, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([9, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([12, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+	translate([15, 10, 0]) cylinder(r1=1.2, r2=0.6, h=3);
+}
+
+--------------------------------------------------------------------------------
+Case 29/30 | Dataset index: 106
+Status: OK
+Latency: 4.86s
+Tokens: prompt=413 completion=243 total=656
+Raw exact match: True
+Normalized exact match: True
+Extracted-code normalized match: True
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Complete the arrangement: this should be a 3 by 2 grid of identical cubes with floating-point step sizes. Each cube has size [1.25,1.25,1.25] and origins at [0.5,0.5,0.0], [3.0,0.5,0.0], [5.5,0.5,0.0], [0.5,3.25,0.0], [3.0,3.25,0.0], and [5.5,3.25,0.0]. The cube at [3.0,3.25,0.0] is missing. Add the missing cube.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([0.5, 0.5, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([3.0, 0.5, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([5.5, 0.5, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([0.5, 3.25, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([5.5, 3.25, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+}
+```
+
+EXPECTED
+union() {
+  translate([0.5, 0.5, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([3.0, 0.5, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([5.5, 0.5, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([0.5, 3.25, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([3.0, 3.25, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([5.5, 3.25, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+}
+
+MODEL OUTPUT
+union() {
+  translate([0.5, 0.5, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([3.0, 0.5, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([5.5, 0.5, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([0.5, 3.25, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([3.0, 3.25, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+  translate([5.5, 3.25, 0.0]) cube(size=[1.25,1.25,1.25], center=false);
+}
+
+--------------------------------------------------------------------------------
+Case 30/30 | Dataset index: 118
+Status: OK
+Latency: 5.48s
+Tokens: prompt=491 completion=278 total=769
+Raw exact match: True
+Normalized exact match: True
+Extracted-code normalized match: True
+
+PROMPT
+Task: Modify the OpenSCAD program according to the instruction.
+
+Return the full updated OpenSCAD code.
+Do not explain anything.
+
+Instruction:
+Complete the arrangement: this scene should contain 8 identical cylinders in a rectangular layout symmetric across both x=0 and y=0 with floating-point coordinates. Each cylinder has radius 0.65, height 3.25, and base centers at [-6.5,-2.25,0.0], [-6.5,2.25,0.0], [-2.5,-2.25,0.0], [-2.5,2.25,0.0], [2.5,-2.25,0.0], [2.5,2.25,0.0], [6.5,-2.25,0.0], and [6.5,2.25,0.0]. The cylinder at [6.5,2.25,0.0] is missing. Add the missing cylinder.
+
+Existing OpenSCAD:
+```scad
+union() {
+  translate([-6.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([-6.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([-2.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([-2.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([2.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([2.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([6.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+}
+```
+
+EXPECTED
+union() {
+  translate([-6.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([-6.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([-2.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([-2.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([2.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([2.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([6.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([6.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+}
+
+MODEL OUTPUT
+union() {
+  translate([-6.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([-6.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([-2.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([-2.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([2.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([2.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([6.5, -2.25, 0.0]) cylinder(r=0.65, h=3.25);
+  translate([6.5, 2.25, 0.0]) cylinder(r=0.65, h=3.25);
+}
+
+================================================================================
+SUMMARY
+Raw exact matches: 12/30
+Normalized exact matches: 12/30
+Extracted-code normalized matches: 12/30
+Total elapsed: 67.78s
+Average elapsed per successful case: 2.26s
