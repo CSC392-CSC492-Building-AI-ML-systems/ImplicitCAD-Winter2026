@@ -170,10 +170,10 @@ function loadSystemPrompt() {
   for (const p of paths) {
     try {
       const manual = fs.readFileSync(p, 'utf8')
-      return `You are an expert at generating ImplicitCAD (ExtOpenSCAD) code. Output ONLY valid ImplicitCAD code, no markdown fences, no explanations outside // comments.\n\nCRITICAL: ImplicitCAD is NOT full OpenSCAD. hull, minkowski, offset, resize, polyhedron, surface, text, import are NOT supported.\n\n---\n\n${manual}\n\n---\n\nOUTPUT RULES:\n1. Output ONLY valid ImplicitCAD code.\n2. If modifying existing code, output COMPLETE updated code.\n3. Prefer ImplicitCAD extensions: union(r=N), cube(r=N), torus(), ellipsoid().\n4. NEVER use unsupported features.\n5. Keep code self-contained.`
+      return `You are an expert at generating ImplicitCAD (ExtOpenSCAD) code.\n\nCRITICAL OUTPUT FORMAT:\n- Output ONLY valid ImplicitCAD code. Nothing else.\n- Do NOT explain your reasoning or thought process.\n- Do NOT include <think> tags or any internal reasoning.\n- Do NOT include markdown fences (\`\`\`).\n- Do NOT repeat the user's request in your output.\n- Your entire response must be valid, compilable ImplicitCAD code.\n- Comments are allowed ONLY as // inline comments within the code.\n\nCRITICAL: ImplicitCAD is NOT full OpenSCAD. hull, minkowski, offset, resize, polyhedron, surface, text, import are NOT supported.\n\n---\n\n${manual}\n\n---\n\nOUTPUT RULES:\n1. Output ONLY valid ImplicitCAD code — your entire response is code.\n2. If modifying existing code, output the COMPLETE updated file.\n3. Prefer ImplicitCAD extensions: union(r=N), cube(r=N), torus(), ellipsoid().\n4. NEVER use unsupported features.\n5. Keep code self-contained.\n6. NEVER output anything before or after the code.`
     } catch {}
   }
-  return 'You generate ImplicitCAD code. Use: cube, sphere, cylinder, cone, torus, ellipsoid. CSG: union(r=N), difference(r=N), intersection(r=N). NO hull, minkowski, offset, resize, text, import. Output ONLY code.'
+  return 'You generate ImplicitCAD code. Output ONLY valid code — no explanations, no reasoning, no <think> tags, no markdown fences. Your entire response must be compilable code. Use: cube, sphere, cylinder, cone, torus, ellipsoid. CSG: union(r=N), difference(r=N), intersection(r=N). NO hull, minkowski, offset, resize, text, import.'
 }
 
 const SYSTEM_PROMPT = loadSystemPrompt()
@@ -196,14 +196,97 @@ function safePath(p) {
   return resolved
 }
 
-function extractCode(response) {
-  if (!response?.trim()) return ''
-  const patterns = [/```(?:openscad|scad|)\s*\n([\s\S]*?)```/i, /```\s*\n([\s\S]*?)```/]
-  for (const p of patterns) {
-    const m = response.match(p)
-    if (m) return m[1].trim()
+function stripThinkBlocks(text) {
+  if (!text) return ''
+  return text
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<\/?think>/gi, '')
+    .trim()
+}
+
+function stripTemplateArtifacts(text) {
+  if (!text) return ''
+  const marker = text.match(/<[^>\n]*(?:\|?im[_ ]?start\|?|\|?im[_ ]?end\|?|\|?endoftext\|?)[^>\n]*>/i)
+  if (marker?.index != null) {
+    return text.slice(0, marker.index).trim()
   }
-  return response.trim()
+  return text
+}
+
+function extractCode(response, inputCode) {
+  let cleaned = stripTemplateArtifacts(stripThinkBlocks(response))
+  if (!cleaned?.trim()) return ''
+
+  const inputNorm = inputCode ? inputCode.trim().replace(/\s+/g, ' ') : ''
+
+  // Helper: check if a code block is just the echoed input
+  function isEcho(block) {
+    if (!inputNorm) return false
+    const blockNorm = block.trim().replace(/\s+/g, ' ')
+    return blockNorm === inputNorm || inputNorm.includes(blockNorm) || blockNorm.includes(inputNorm)
+  }
+
+  // Find ALL fenced code blocks with their positions
+  const fencePattern = /```(?:openscad|scad|implicit|)\s*\n([\s\S]*?)```/gi
+  const blocks = []
+  let m
+  while ((m = fencePattern.exec(cleaned)) !== null) {
+    blocks.push({ code: m[1].trim(), start: m.index, end: m.index + m[0].length })
+  }
+
+  if (blocks.length > 0) {
+    // Filter out any blocks that are just echoed input
+    const nonEcho = blocks.filter(b => !isEcho(b.code))
+
+    if (nonEcho.length > 0) {
+      // Return the last non-echo block
+      return nonEcho[nonEcho.length - 1].code
+    }
+
+    // All blocks were echoes — strip them from cleaned text and look at remainder
+    let remainder = cleaned
+    for (const b of blocks.reverse()) {
+      remainder = remainder.slice(0, b.start) + remainder.slice(b.end)
+    }
+    remainder = remainder.replace(/Current code:\s*/gi, '').trim()
+
+    // Check if remainder has unfenced code
+    if (remainder && /^(?:\/\/|union|difference|intersection|cube|sphere|cylinder|translate|rotate|module|include)/m.test(remainder)) {
+      // Extract just the code-looking portion
+      const lines = remainder.split('\n')
+      const codeLines = []
+      let inCode = false
+      for (const line of lines) {
+        if (!inCode && /^(?:\/\/|union|difference|intersection|cube|sphere|cylinder|translate|rotate|module|include|\s*\{|\s*\})/.test(line)) {
+          inCode = true
+        }
+        if (inCode) {
+          // Stop at clearly non-code text
+          if (/^(?:Add |Now |Complete |Create |Modify |The |This |User|Note|Task)/i.test(line.trim())) break
+          codeLines.push(line)
+        }
+      }
+      if (codeLines.length > 0) return codeLines.join('\n').trim()
+    }
+
+    // Fallback: return the last block even if it's an echo (better than nothing)
+    return blocks[blocks.length - 1].code
+  }
+
+  // No fenced blocks at all — check if response looks like code
+  const trimmed = cleaned.trim()
+  if (/^(?:\/\/|union|difference|intersection|cube|sphere|cylinder|translate|rotate|module|include)/.test(trimmed)) {
+    // Strip any trailing natural language
+    const lines = trimmed.split('\n')
+    const codeLines = []
+    for (const line of lines) {
+      if (/^(?:Add |Now |Complete |Create |Modify |The |This |User|Note|Task)/i.test(line.trim())) break
+      codeLines.push(line)
+    }
+    return codeLines.join('\n').trim() || trimmed
+  }
+
+  return trimmed
 }
 
 // ── Model Profiles ─────────────────────────────────────────────────────────
@@ -470,6 +553,8 @@ async function* normalizeStream(providerStream, provider, traceId) {
   const reader = providerStream.getReader()
   let buffer = ''
   let rawEventCount = 0
+  let inThinkBlock = false
+  let dropAfterTemplateMarker = false
 
   try {
     while (true) {
@@ -485,13 +570,42 @@ async function* normalizeStream(providerStream, provider, traceId) {
           if (!line.trim()) continue
           try {
             const data = JSON.parse(line)
-            const token = data.message?.content || ''
+            let token = data.message?.content || ''
             // Debug: log first 10 raw events with full field structure
             if (process.env.DEBUG_LLM_STREAM === '1' && rawEventCount < 10) {
               rawEventCount++
               const msgKeys = Object.keys(data.message || {}).join(',')
               const topKeys = Object.keys(data).filter(k => k !== 'message').join(',')
               console.log(`[stream:${traceId}] #${rawEventCount} keys=[${topKeys}] msg_keys=[${msgKeys}] content=${JSON.stringify((token || '').slice(0,100))} thinking=${data.message?.thinking ? 'YES:' + JSON.stringify(String(data.message.thinking).slice(0,60)) : 'no'} done=${!!data.done}`)
+            }
+            // Filter <think>...</think> content from streamed UI output
+            if (token) {
+              if (dropAfterTemplateMarker) token = ''
+              if (inThinkBlock) {
+                const endIdx = token.indexOf('</think>')
+                if (endIdx === -1) {
+                  token = ''
+                } else {
+                  token = token.slice(endIdx + 8)
+                  inThinkBlock = false
+                }
+              }
+              const startIdx = token.indexOf('<think>')
+              if (startIdx !== -1) {
+                const endIdx = token.indexOf('</think>', startIdx + 7)
+                if (endIdx !== -1) {
+                  token = token.slice(0, startIdx) + token.slice(endIdx + 8)
+                } else {
+                  token = token.slice(0, startIdx)
+                  inThinkBlock = true
+                }
+              }
+              token = token.replace(/<\/?think>/gi, '')
+              const marker = token.match(/<[^>\n]*(?:\|?im[_ ]?start\|?|\|?im[_ ]?end\|?|\|?endoftext\|?)[^>\n]*>/i)
+              if (marker?.index != null) {
+                token = token.slice(0, marker.index)
+                dropAfterTemplateMarker = true
+              }
             }
             if (token) yield { token, done: false }
             if (data.done) yield { token: '', done: true }
@@ -690,7 +804,7 @@ const server = http.createServer(async (req, res) => {
         raw = await routeInference(messages, false)
       }
 
-      const code = extractCode(raw)
+      const code = extractCode(raw, body.code)
       if (!code) {
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'Empty LLM response', raw: (raw || '').slice(0, 500) }))
@@ -747,7 +861,7 @@ const server = http.createServer(async (req, res) => {
         }
         fullPrompt += 'Generate the OpenSCAD code:'
         const raw = await callLLMCli(fullPrompt)
-        const code = extractCode(raw)
+        const code = extractCode(raw, body.code)
         res.write(`data: ${JSON.stringify({ token: raw, done: false })}\n\n`)
         res.write(`data: ${JSON.stringify({ token: '', done: true, code })}\n\n`)
         res.end()
@@ -761,7 +875,7 @@ const server = http.createServer(async (req, res) => {
       for await (const event of normalizeStream(providerStream, activeConfig.provider, traceId)) {
         if (aborted) break
         if (event.done) {
-          const code = extractCode(accumulated)
+          const code = extractCode(accumulated, body.code)
           if (process.env.DEBUG_LLM_STREAM === '1') {
             console.log(`[done:${traceId}] accumulated_len=${accumulated.length} extracted_code_len=${code?.length || 0}`)
             console.log(`[done:${traceId}] first 300 chars: ${accumulated.slice(0, 300).replace(/\n/g, '\\n')}`)
@@ -776,7 +890,7 @@ const server = http.createServer(async (req, res) => {
 
       // If stream ended without a done event, send one
       if (!aborted && !sentDone && accumulated) {
-        const code = extractCode(accumulated)
+        const code = extractCode(accumulated, body.code)
         res.write(`data: ${JSON.stringify({ token: '', done: true, code })}\n\n`)
       }
 
