@@ -105,8 +105,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   deleteSession: (id) =>
     set((s) => {
+      // Reset server-side thread memory for this session
+      fetch('/api/chat/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: id }),
+      }).catch(() => {})
+
       if (s.sessions.length <= 1) {
-        // Can't delete the last session — just clear it
         return {
           sessions: s.sessions.map(sess =>
             sess.id === id ? { ...sess, messages: [], streamingText: '', isLoading: false, isStreaming: false, name: 'New Chat' } : sess
@@ -186,13 +192,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
     })),
 
   clear: () =>
-    set((s) => ({
-      sessions: s.sessions.map(sess =>
-        sess.id === s.activeSessionId
-          ? { ...sess, messages: [], streamingText: '' }
-          : sess
-      ),
-    })),
+    set((s) => {
+      // Reset server-side thread memory
+      fetch('/api/chat/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: s.activeSessionId }),
+      }).catch(() => {})
+      return {
+        sessions: s.sessions.map(sess =>
+          sess.id === s.activeSessionId
+            ? { ...sess, messages: [], streamingText: '' }
+            : sess
+        ),
+      }
+    }),
 
   // ── Provider actions (global) ──────────────────────────────────────
 

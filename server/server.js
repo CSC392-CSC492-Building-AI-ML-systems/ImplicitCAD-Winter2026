@@ -53,22 +53,32 @@ function saveProviderConfig(config) {
 
 let activeConfig = loadProviderConfig()
 
-// Auto-detect first available implicitcad-* model if none configured
+// Verify configured model exists, or auto-detect first available implicitcad-* model
 async function autoDetectModel() {
-  if (activeConfig.model) return
+  if (activeConfig.provider !== 'ollama') return
   try {
     const models = await listOllamaModels()
-    const implicitcadModel = models.find(m => m.name.startsWith('implicitcad'))
-    if (implicitcadModel) {
-      activeConfig.model = implicitcadModel.name.replace(/:latest$/, '')
+    const modelNames = models.map(m => m.name.replace(/:latest$/, ''))
+
+    // If configured model exists, keep it
+    if (activeConfig.model && modelNames.includes(activeConfig.model)) {
+      console.log(`Using configured model: ${activeConfig.model}`)
+      return
+    }
+
+    // Configured model doesn't exist (stale config) or empty — find first available
+    const available = modelNames.find(n => n.startsWith('implicitcad'))
+    if (available) {
+      const prev = activeConfig.model
+      activeConfig.model = available
       saveProviderConfig(activeConfig)
-      console.log(`Auto-detected model: ${activeConfig.model}`)
-    } else {
-      activeConfig.model = 'implicitcad-dev'  // Fallback default
+      console.log(`Model '${prev || '(none)'}' not found, switched to: ${available}`)
+    } else if (!activeConfig.model) {
+      activeConfig.model = 'implicitcad-dev'
       console.log('No implicitcad-* models found, defaulting to implicitcad-dev')
     }
   } catch {
-    activeConfig.model = 'implicitcad-dev'
+    if (!activeConfig.model) activeConfig.model = 'implicitcad-dev'
   }
 }
 
@@ -196,17 +206,129 @@ function extractCode(response) {
   return response.trim()
 }
 
-function buildMessages(prompt, code, history) {
-  const messages = [{ role: 'system', content: SYSTEM_PROMPT }]
-  if (history?.length) {
-    for (const m of history.slice(-6)) {
-      messages.push({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content })
+// ── Model Profiles ─────────────────────────────────────────────────────────
+
+const MODEL_PROFILES = {
+  'implicitcad-dev':  { contextWindow: 4096, maxOutput: 768 },
+  'implicitcad-9b':   { contextWindow: 8192, maxOutput: 2048 },
+  'implicitcad-27b':  { contextWindow: 8192, maxOutput: 2048 },
+}
+const DEFAULT_PROFILE = { contextWindow: 4096, maxOutput: 1024 }
+
+function getModelProfile(model) {
+  if (!model) return DEFAULT_PROFILE
+  const base = model.replace(/:latest$/, '')
+  return MODEL_PROFILES[base] || DEFAULT_PROFILE
+}
+
+// ── Thread State (server-side session memory) ──────────────────────────────
+
+const threadState = new Map()
+const THREAD_TTL = 3600000 // 1 hour
+
+function getThread(sessionId) {
+  if (!sessionId) sessionId = 'default'
+  if (!threadState.has(sessionId)) {
+    threadState.set(sessionId, {
+      summary: '',
+      recentUserPrompts: [],
+      updatedAt: Date.now(),
+    })
+  }
+  const t = threadState.get(sessionId)
+  t.updatedAt = Date.now()
+  return t
+}
+
+function updateThread(sessionId, userPrompt) {
+  const thread = getThread(sessionId)
+  thread.recentUserPrompts.push(userPrompt)
+
+  // Compact: keep last 4 prompts as raw, older ones become summary bullets
+  if (thread.recentUserPrompts.length > 4) {
+    const old = thread.recentUserPrompts.splice(0, thread.recentUserPrompts.length - 4)
+    const bullets = old.map(p => '- ' + p.slice(0, 80).replace(/\n/g, ' ')).join('\n')
+    thread.summary = thread.summary
+      ? thread.summary + '\n' + bullets
+      : bullets
+    // Cap summary length
+    if (thread.summary.length > 500) {
+      thread.summary = thread.summary.slice(-500)
     }
   }
+
+  thread.updatedAt = Date.now()
+  return thread
+}
+
+// Cleanup stale threads periodically
+setInterval(() => {
+  const now = Date.now()
+  for (const [id, t] of threadState) {
+    if (now - t.updatedAt > THREAD_TTL) threadState.delete(id)
+  }
+}, 600000)
+
+// ── Token Estimation ───────────────────────────────────────────────────────
+
+function estimateTokens(text) {
+  if (!text) return 0
+  const isCode = /[{};()=]/.test(text)
+  return Math.ceil(text.length / (isCode ? 3 : 4))
+}
+
+// ── Prompt Assembly (priority-based packing) ───────────────────────────────
+
+function buildMessages(prompt, code, sessionId) {
+  const profile = getModelProfile(activeConfig.model)
+  const maxContext = profile.contextWindow
+  const maxOutput = profile.maxOutput
+  const thread = getThread(sessionId)
+
+  const messages = [{ role: 'system', content: SYSTEM_PROMPT }]
+  const systemTokens = estimateTokens(SYSTEM_PROMPT)
+
+  // Current user message (always included — highest priority)
   let userContent = ''
   if (code?.trim()) userContent += `Current code:\n\`\`\`\n${code.trim()}\n\`\`\`\n\n`
   userContent += prompt.trim()
+  const userTokens = estimateTokens(userContent)
+
+  // Check if base content fits
+  if (systemTokens + userTokens + maxOutput > maxContext) {
+    // Code too large — return error so frontend can inform user
+    throw new Error(`Code is too large for the current model's context window (${maxContext} tokens). Try a shorter file or switch to a larger model.`)
+  }
+
+  let budget = maxContext - systemTokens - estimateTokens(userContent) - maxOutput
+
+  // Priority 2: Recent user prompts (intent context, no AI code)
+  if (thread.recentUserPrompts.length > 0 && budget > 100) {
+    const contextBlock = thread.recentUserPrompts
+      .map(p => 'User: ' + p.slice(0, 200))
+      .join('\n')
+    const tokens = estimateTokens(contextBlock)
+    if (tokens <= budget) {
+      messages.push({ role: 'user', content: 'Previous requests in this session:\n' + contextBlock })
+      budget -= tokens
+    }
+  }
+
+  // Priority 3: Rolling summary (lowest priority)
+  if (thread.summary && budget > 50) {
+    const summaryText = 'Summary of earlier conversation:\n' + thread.summary
+    const tokens = estimateTokens(summaryText)
+    if (tokens <= budget) {
+      messages.push({ role: 'user', content: summaryText })
+    }
+  }
+
   messages.push({ role: 'user', content: userContent })
+
+  // Debug: log prompt packing for remote diagnosis
+  const totalEstTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0)
+  console.log(`[buildMessages] model=${activeConfig.model} msgs=${messages.length} est_tokens=${totalEstTokens}/${maxContext} output_reserve=${maxOutput} thread_prompts=${thread.recentUserPrompts.length} has_summary=${!!thread.summary}`)
+
   return messages
 }
 
@@ -231,6 +353,7 @@ function callLLMCli(prompt) {
 // ── Provider: Ollama ────────────────────────────────────────────────────────
 
 async function callOllama(messages, model, stream = false) {
+  const profile = getModelProfile(model)
   const resp = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -239,7 +362,7 @@ async function callOllama(messages, model, stream = false) {
       messages,
       stream,
       think: false,
-      options: { num_predict: 2048 },  // Limit output to prevent infinite generation
+      options: { num_predict: profile.maxOutput },
     }),
   })
   if (!resp.ok) {
@@ -537,19 +660,20 @@ const server = http.createServer(async (req, res) => {
       const body = await parseJsonBody(req)
       if (!body.prompt?.trim()) { res.writeHead(400); res.end(JSON.stringify({ error: 'Prompt required' })); return }
 
-      const messages = buildMessages(body.prompt, body.code, body.history)
+      // Build messages first, THEN update thread (avoids duplicating current prompt)
+      const messages = buildMessages(body.prompt, body.code, body.sessionId)
+      updateThread(body.sessionId, body.prompt.trim())
       let raw
 
       if (activeConfig.provider === 'cli') {
-        // Legacy CLI path
-        let fullPrompt = SYSTEM_PROMPT + '\n\n'
-        if (body.code?.trim()) fullPrompt += `Current code:\n\`\`\`\n${body.code.trim()}\n\`\`\`\n\n`
-        if (body.history?.length) {
-          fullPrompt += 'Previous conversation:\n'
-          for (const m of body.history.slice(-6)) fullPrompt += `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}\n`
-          fullPrompt += '\n'
+        // Legacy CLI path — flatten messages to single string
+        let fullPrompt = ''
+        for (const m of messages) {
+          if (m.role === 'system') fullPrompt += m.content + '\n\n'
+          else if (m.role === 'user') fullPrompt += `User: ${m.content}\n\n`
+          else fullPrompt += `Assistant: ${m.content}\n\n`
         }
-        fullPrompt += `User request: ${body.prompt.trim()}\n\nGenerate the OpenSCAD code:`
+        fullPrompt += 'Generate the OpenSCAD code:'
         raw = await callLLMCli(fullPrompt)
       } else {
         raw = await routeInference(messages, false)
@@ -577,7 +701,9 @@ const server = http.createServer(async (req, res) => {
       const body = await parseJsonBody(req)
       if (!body.prompt?.trim()) { res.writeHead(400); res.end(JSON.stringify({ error: 'Prompt required' })); return }
 
-      const messages = buildMessages(body.prompt, body.code, body.history)
+      // Build messages first, THEN update thread (avoids duplicating current prompt)
+      const messages = buildMessages(body.prompt, body.code, body.sessionId)
+      updateThread(body.sessionId, body.prompt.trim())
 
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -591,9 +717,14 @@ const server = http.createServer(async (req, res) => {
 
       if (activeConfig.provider === 'cli') {
         // CLI fallback: non-streaming, send as single SSE event
-        let fullPrompt = SYSTEM_PROMPT + '\n\n'
-        if (body.code?.trim()) fullPrompt += `Current code:\n\`\`\`\n${body.code.trim()}\n\`\`\`\n\n`
-        fullPrompt += `User request: ${body.prompt.trim()}\n\nGenerate the OpenSCAD code:`
+        // Use buildMessages for budgeting, then flatten
+        let fullPrompt = ''
+        for (const m of messages) {
+          if (m.role === 'system') fullPrompt += m.content + '\n\n'
+          else if (m.role === 'user') fullPrompt += `User: ${m.content}\n\n`
+          else fullPrompt += `Assistant: ${m.content}\n\n`
+        }
+        fullPrompt += 'Generate the OpenSCAD code:'
         const raw = await callLLMCli(fullPrompt)
         const code = extractCode(raw)
         res.write(`data: ${JSON.stringify({ token: raw, done: false })}\n\n`)
@@ -633,6 +764,23 @@ const server = http.createServer(async (req, res) => {
         res.write(`data: ${JSON.stringify({ error: e.message, done: true })}\n\n`)
         res.end()
       }
+    }
+    return
+  }
+
+  // ── Thread: Reset (clear server-side session memory) ─────────────────
+
+  if (pathname === '/api/chat/reset' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody(req)
+      if (body.sessionId) {
+        threadState.delete(body.sessionId)
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: true }))
+    } catch {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: true }))
     }
     return
   }
