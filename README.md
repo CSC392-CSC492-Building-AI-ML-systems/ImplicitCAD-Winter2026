@@ -9,8 +9,10 @@ This project uses a LoRA adapter hosted on Hugging Face:
   LoRA for Qwen3.5 27B: https://huggingface.co/Max2475/qwen3.5-27b-openscad-instruct-lora
   
   LoRA for Qwen3.5 9B:  https://huggingface.co/Max2475/qwen3.5-9b-openscad-lora
+
+  The merged GGUF for Qwen3.5 9B: https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct/tree/main
   
-> Note: Model weights are hosted on Hugging Face due to GitHub size limits.
+> Note: Model weights and the merged GGUF are hosted on Hugging Face due to GitHub size limits.
 
 ## Quick Start (Docker)
 
