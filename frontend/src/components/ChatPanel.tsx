@@ -156,12 +156,9 @@ export function ChatPanel() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          sessionId: activeSessionId,
           prompt: text,
           code,
-          history: messages.slice(-8).map((m) => ({
-            role: m.role === 'ai' ? 'assistant' : m.role,
-            content: m.code || m.text,
-          })),
         }),
       })
 
