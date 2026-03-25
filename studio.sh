@@ -97,7 +97,7 @@ detect_system() {
   OLLAMA_LOCAL=false
   OLLAMA_VER="not found"
   if command -v ollama &>/dev/null; then
-    OLLAMA_VER=$(ollama --version 2>/dev/null | awk '{print $NF}' || echo "installed")
+    OLLAMA_VER=$(ollama --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "installed")
     OLLAMA_LOCAL=true
   fi
 
@@ -333,10 +333,10 @@ ensure_ollama_running() {
   sleep 1
   if ! kill -0 "$ollama_pid" 2>/dev/null; then
     # Maybe port is already taken by something else
-    if curl -sf "http://localhost:11434/api/tags" --connect-timeout 2 &>/dev/null; then
+    if curl -sf "${OLLAMA_URL_IN_USE:-http://localhost:11434}/api/tags" --connect-timeout 2 &>/dev/null; then
       OLLAMA_RUNNING=true
       OLLAMA_API_OK=true
-      OLLAMA_URL_IN_USE="http://localhost:11434"
+      if [ -z "$OLLAMA_URL_IN_USE" ]; then OLLAMA_URL_IN_USE="http://localhost:11434"; fi
       info "Ollama already running"
       return
     fi
@@ -652,10 +652,25 @@ setup_9b() {
 
   # Step 1: Pull merged model from HuggingFace
   echo -e "  ${C}Step 1/2:${D} Pulling model from HuggingFace (~6GB)..."
+  echo -e "  ${DIM}Large download — if it times out, it will resume where it left off on retry.${D}"
   if has_ollama_model "hf.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct"; then
     info "Model already pulled — skipping"
   else
-    pull_model "hf.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct" || { fail "Failed to pull model. Check your internet connection."; return; }
+    # Retry up to 3 times — HuggingFace CDN can be slow and Ollama may timeout
+    local attempt
+    for attempt in 1 2 3; do
+      if pull_model "hf.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct"; then
+        break
+      fi
+      if [ "$attempt" -lt 3 ]; then
+        warn "Download interrupted (attempt $attempt/3). Retrying — Ollama resumes partial downloads..."
+        sleep 2
+      else
+        fail "Failed after 3 attempts. Check your internet connection and try again."
+        echo -e "    ${DIM}You can also try manually: ${C}ollama pull hf.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct${D}"
+        return
+      fi
+    done
   fi
 
   # Step 2: Create app model with system prompt and parameters
@@ -990,8 +1005,8 @@ fallback_menu() {
 # ── Detect if terminal supports arrow-key menu ──────────────────────────────
 
 use_arrow_menu() {
-  # Need: interactive terminal + bash read -s support
-  [ -t 0 ] && [ -t 1 ] && printf "\033[6n" >/dev/null 2>&1
+  # Need: interactive terminal with stdin and stdout connected to a tty
+  [ -t 0 ] && [ -t 1 ]
 }
 
 # ── Interactive Menu Loop ────────────────────────────────────────────────────
@@ -1015,8 +1030,6 @@ while true; do
   _cursor_row=""
   printf '\033[6n'
   IFS=';' read -rs -t 2 -d R _cursor_row _ 2>/dev/null || true
-  # Flush any leftover input from cursor query
-  while read -rs -t 0.1 -n 1 _ 2>/dev/null; do :; done
   if [ -n "$_cursor_row" ]; then
     MENU_START_ROW=${_cursor_row#*[}
   else
