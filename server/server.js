@@ -41,7 +41,7 @@ function loadProviderConfig() {
   } catch {}
   return {
     provider: process.env.ACTIVE_PROVIDER || 'ollama',
-    model: process.env.ACTIVE_MODEL || 'implicitcad-dev',
+    model: process.env.ACTIVE_MODEL || '',  // Empty = auto-detect first available
   }
 }
 
@@ -52,6 +52,25 @@ function saveProviderConfig(config) {
 }
 
 let activeConfig = loadProviderConfig()
+
+// Auto-detect first available implicitcad-* model if none configured
+async function autoDetectModel() {
+  if (activeConfig.model) return
+  try {
+    const models = await listOllamaModels()
+    const implicitcadModel = models.find(m => m.name.startsWith('implicitcad'))
+    if (implicitcadModel) {
+      activeConfig.model = implicitcadModel.name.replace(/:latest$/, '')
+      saveProviderConfig(activeConfig)
+      console.log(`Auto-detected model: ${activeConfig.model}`)
+    } else {
+      activeConfig.model = 'implicitcad-dev'  // Fallback default
+      console.log('No implicitcad-* models found, defaulting to implicitcad-dev')
+    }
+  } catch {
+    activeConfig.model = 'implicitcad-dev'
+  }
+}
 
 // ── Binary Discovery ────────────────────────────────────────────────────────
 
@@ -215,7 +234,13 @@ async function callOllama(messages, model, stream = false) {
   const resp = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages, stream, think: false }),
+    body: JSON.stringify({
+      model,
+      messages,
+      stream,
+      think: false,
+      options: { num_predict: 2048 },  // Limit output to prevent infinite generation
+    }),
   })
   if (!resp.ok) {
     const text = await resp.text()
@@ -705,7 +730,8 @@ const server = http.createServer(async (req, res) => {
 
 // ── Start ───────────────────────────────────────────────────────────────────
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
+  await autoDetectModel()
   console.log('')
   console.log('┌──────────────────────────────────────────────────┐')
   console.log('│        ImplicitCAD Studio — Server                │')

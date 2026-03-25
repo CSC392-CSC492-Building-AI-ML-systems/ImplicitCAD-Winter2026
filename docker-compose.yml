@@ -32,7 +32,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - ACTIVE_PROVIDER=${ACTIVE_PROVIDER:-ollama}
-      - ACTIVE_MODEL=${ACTIVE_MODEL:-implicitcad-dev}
+      - ACTIVE_MODEL=${ACTIVE_MODEL:-}
     volumes:
       - ${WORKSPACE_DIR:-./_workspace}:/workspace
       - implicitcad-bin:/opt/implicitcad-bin:ro
