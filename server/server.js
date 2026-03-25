@@ -460,10 +460,11 @@ async function routeInference(messages, stream = false) {
 
 // ── Stream Normalizer (converts provider streams to SSE) ────────────────────
 
-async function* normalizeStream(providerStream, provider) {
+async function* normalizeStream(providerStream, provider, traceId) {
   const decoder = new TextDecoder()
   const reader = providerStream.getReader()
   let buffer = ''
+  let rawEventCount = 0
 
   try {
     while (true) {
@@ -473,8 +474,6 @@ async function* normalizeStream(providerStream, provider) {
 
       if (provider === 'ollama') {
         // Ollama: newline-delimited JSON
-        // Qwen 3.5 emits "thinking" tokens (empty content) before real content.
-        // We skip thinking tokens and only forward content tokens.
         const lines = buffer.split('\n')
         buffer = lines.pop() || ''
         for (const line of lines) {
@@ -482,6 +481,13 @@ async function* normalizeStream(providerStream, provider) {
           try {
             const data = JSON.parse(line)
             const token = data.message?.content || ''
+            // Debug: log first 10 raw events with full field structure
+            if (process.env.DEBUG_LLM_STREAM === '1' && rawEventCount < 10) {
+              rawEventCount++
+              const msgKeys = Object.keys(data.message || {}).join(',')
+              const topKeys = Object.keys(data).filter(k => k !== 'message').join(',')
+              console.log(`[stream:${traceId}] #${rawEventCount} keys=[${topKeys}] msg_keys=[${msgKeys}] content=${JSON.stringify((token || '').slice(0,100))} thinking=${data.message?.thinking ? 'YES:' + JSON.stringify(String(data.message.thinking).slice(0,60)) : 'no'} done=${!!data.done}`)
+            }
             if (token) yield { token, done: false }
             if (data.done) yield { token: '', done: true }
           } catch {}
@@ -701,9 +707,19 @@ const server = http.createServer(async (req, res) => {
       const body = await parseJsonBody(req)
       if (!body.prompt?.trim()) { res.writeHead(400); res.end(JSON.stringify({ error: 'Prompt required' })); return }
 
+      const traceId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+
       // Build messages first, THEN update thread (avoids duplicating current prompt)
       const messages = buildMessages(body.prompt, body.code, body.sessionId)
       updateThread(body.sessionId, body.prompt.trim())
+
+      // Debug: log request and packed messages
+      if (process.env.DEBUG_LLM_STREAM === '1') {
+        console.log(`[req:${traceId}] sessionId=${body.sessionId || 'default'} model=${activeConfig.model} prompt_len=${body.prompt.length} code_len=${(body.code || '').length} packed_msgs=${messages.length}`)
+        for (const m of messages) {
+          console.log(`  [req:${traceId}] [${m.role}] (${m.content.length} chars) ${m.content.slice(0, 120).replace(/\n/g, '\\n')}...`)
+        }
+      }
 
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -737,10 +753,14 @@ const server = http.createServer(async (req, res) => {
       let accumulated = ''
       let sentDone = false
 
-      for await (const event of normalizeStream(providerStream, activeConfig.provider)) {
+      for await (const event of normalizeStream(providerStream, activeConfig.provider, traceId)) {
         if (aborted) break
         if (event.done) {
           const code = extractCode(accumulated)
+          if (process.env.DEBUG_LLM_STREAM === '1') {
+            console.log(`[done:${traceId}] accumulated_len=${accumulated.length} extracted_code_len=${code?.length || 0}`)
+            console.log(`[done:${traceId}] first 300 chars: ${accumulated.slice(0, 300).replace(/\n/g, '\\n')}`)
+          }
           res.write(`data: ${JSON.stringify({ token: '', done: true, code })}\n\n`)
           sentDone = true
         } else {
