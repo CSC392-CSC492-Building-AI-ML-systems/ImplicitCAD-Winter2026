@@ -1,5 +1,4 @@
-FROM qwen3.5:9b
-ADAPTER ./adapters/9b
+FROM hf.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct
 
 PARAMETER temperature 0.3
 PARAMETER top_p 0.9
