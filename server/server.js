@@ -213,11 +213,40 @@ function stripTemplateArtifacts(text) {
   return text
 }
 
-function extractCode(response, inputCode) {
+function normalizeLoose(text) {
+  return (text || '').replace(/\s+/g, ' ').trim()
+}
+
+function stripEchoedInputPrefix(text, inputCode, inputPrompt) {
+  let remaining = (text || '').trim()
+
+  if (inputCode) {
+    const fencedEcho = remaining.match(/^Current code:\s*```(?:openscad|scad|implicit|)?\s*\n([\s\S]*?)```\s*/i)
+    if (fencedEcho) {
+      const echoedNorm = normalizeLoose(fencedEcho[1])
+      const inputNorm = normalizeLoose(inputCode)
+      if (echoedNorm === inputNorm || echoedNorm.includes(inputNorm) || inputNorm.includes(echoedNorm)) {
+        remaining = remaining.slice(fencedEcho[0].length).trim()
+      }
+    }
+  }
+
+  if (inputPrompt) {
+    remaining = remaining.replace(/^(?:User request:|Task:)\s*/i, '')
+    if (remaining.startsWith(inputPrompt.trim())) {
+      remaining = remaining.slice(inputPrompt.trim().length).trim()
+    }
+  }
+
+  return remaining
+}
+
+function extractCode(response, inputCode, inputPrompt) {
   let cleaned = stripTemplateArtifacts(stripThinkBlocks(response))
+  cleaned = stripEchoedInputPrefix(cleaned, inputCode, inputPrompt)
   if (!cleaned?.trim()) return ''
 
-  const inputNorm = inputCode ? inputCode.trim().replace(/\s+/g, ' ') : ''
+  const inputNorm = normalizeLoose(inputCode)
 
   // Helper: check if a code block is just the echoed input
   function isEcho(block) {
@@ -248,7 +277,7 @@ function extractCode(response, inputCode) {
     for (const b of blocks.reverse()) {
       remainder = remainder.slice(0, b.start) + remainder.slice(b.end)
     }
-    remainder = remainder.replace(/Current code:\s*/gi, '').trim()
+    remainder = stripEchoedInputPrefix(remainder.replace(/Current code:\s*/gi, ''), inputCode, inputPrompt)
 
     // Check if remainder has unfenced code
     if (remainder && /^(?:\/\/|union|difference|intersection|cube|sphere|cylinder|translate|rotate|module|include)/m.test(remainder)) {
@@ -287,6 +316,26 @@ function extractCode(response, inputCode) {
   }
 
   return trimmed
+}
+
+function consumeLeadingEcho(token, state) {
+  if (!state.enabled || !token) return token
+  if (!state.remaining.length) {
+    state.enabled = false
+    return token
+  }
+
+  let i = 0
+  while (i < token.length && i < state.remaining.length && token[i] === state.remaining[i]) i++
+
+  if (i === 0) {
+    state.enabled = false
+    return token
+  }
+
+  state.remaining = state.remaining.slice(i)
+  if (!state.remaining.length) state.enabled = false
+  return token.slice(i)
 }
 
 // ── Model Profiles ─────────────────────────────────────────────────────────
@@ -804,7 +853,7 @@ const server = http.createServer(async (req, res) => {
         raw = await routeInference(messages, false)
       }
 
-      const code = extractCode(raw, body.code)
+      const code = extractCode(raw, body.code, body.prompt)
       if (!code) {
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'Empty LLM response', raw: (raw || '').slice(0, 500) }))
@@ -861,7 +910,7 @@ const server = http.createServer(async (req, res) => {
         }
         fullPrompt += 'Generate the OpenSCAD code:'
         const raw = await callLLMCli(fullPrompt)
-        const code = extractCode(raw, body.code)
+        const code = extractCode(raw, body.code, body.prompt)
         res.write(`data: ${JSON.stringify({ token: raw, done: false })}\n\n`)
         res.write(`data: ${JSON.stringify({ token: '', done: true, code })}\n\n`)
         res.end()
@@ -871,11 +920,17 @@ const server = http.createServer(async (req, res) => {
       const providerStream = await routeInference(messages, true)
       let accumulated = ''
       let sentDone = false
+      const echoState = {
+        enabled: !!body.code?.trim(),
+        remaining: body.code?.trim()
+          ? `Current code:\n\`\`\`\n${body.code.trim()}\n\`\`\`\n\n${body.prompt.trim()}`
+          : '',
+      }
 
       for await (const event of normalizeStream(providerStream, activeConfig.provider, traceId)) {
         if (aborted) break
         if (event.done) {
-          const code = extractCode(accumulated, body.code)
+          const code = extractCode(accumulated, body.code, body.prompt)
           if (process.env.DEBUG_LLM_STREAM === '1') {
             console.log(`[done:${traceId}] accumulated_len=${accumulated.length} extracted_code_len=${code?.length || 0}`)
             console.log(`[done:${traceId}] first 300 chars: ${accumulated.slice(0, 300).replace(/\n/g, '\\n')}`)
@@ -884,13 +939,16 @@ const server = http.createServer(async (req, res) => {
           sentDone = true
         } else {
           accumulated += event.token
-          res.write(`data: ${JSON.stringify({ token: event.token, done: false })}\n\n`)
+          const visibleToken = consumeLeadingEcho(event.token, echoState)
+          if (visibleToken) {
+            res.write(`data: ${JSON.stringify({ token: visibleToken, done: false })}\n\n`)
+          }
         }
       }
 
       // If stream ended without a done event, send one
       if (!aborted && !sentDone && accumulated) {
-        const code = extractCode(accumulated, body.code)
+        const code = extractCode(accumulated, body.code, body.prompt)
         res.write(`data: ${JSON.stringify({ token: '', done: true, code })}\n\n`)
       }
 
