@@ -195,10 +195,13 @@ export function useRender() {
   const render = useCallback(
     (code: string) => {
       const mode = useViewerStore.getState().backendMode
-      if (mode === 'docker') {
-        compileSTL(code)
-      } else {
+      if (mode === 'implicitsnap') {
         compileJSONP(code)
+      } else {
+        // Default to the Docker/STL path for null or docker mode.
+        // This avoids accidentally hitting the legacy JSONP renderer while
+        // backend detection is still in progress.
+        compileSTL(code)
       }
     },
     [compileSTL, compileJSONP],
