@@ -160,42 +160,29 @@ export default function App() {
 
   useEffect(() => {
     async function detectBackend() {
-      // Check Docker backend first (preferred — gives STL + admesh validation)
-      try {
-        const r = await fetch('/api/health', { signal: AbortSignal.timeout(3000) })
-        if (r.ok) {
-          setBackendMode('docker')
-          log('Connected to Docker backend', 'success')
-          if (!initialRenderDone.current) {
-            initialRenderDone.current = true
-            setTimeout(() => render(useEditorStore.getState().code), 500)
+      // Try Docker backend with retries (server may take a few seconds to start)
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          const r = await fetch('/api/health', { signal: AbortSignal.timeout(3000) })
+          if (r.ok) {
+            setBackendMode('docker')
+            log('Connected to Docker backend', 'success')
+            if (!initialRenderDone.current) {
+              initialRenderDone.current = true
+              setTimeout(() => render(useEditorStore.getState().code), 500)
+            }
+            return
           }
-          return
+        } catch {
+          // Server not ready yet, wait and retry
+          if (attempt < 4) await new Promise(r => setTimeout(r, 2000))
         }
-      } catch {
-        // Expected timeout when Docker backend is not running
       }
 
-      // Fallback: try standalone implicitsnap (non-Docker setup)
-      try {
-        const r = await fetch('/render/?source=sphere(1);&callback=__test&format=jsTHREE', {
-          signal: AbortSignal.timeout(3000),
-        })
-        if (r.ok) {
-          setBackendMode('implicitsnap')
-          log('Connected to implicitsnap (port 8080)', 'success')
-          if (!initialRenderDone.current) {
-            initialRenderDone.current = true
-            setTimeout(() => render(useEditorStore.getState().code), 500)
-          }
-          return
-        }
-      } catch {
-        // Expected timeout when implicitsnap is not running
-      }
-
+      // Docker backend not available after retries — use docker mode anyway
+      // (user can manually render once server is up)
       setBackendMode('docker')
-      log('No backend detected. Start Docker or implicitsnap.', 'warning')
+      log('Docker backend not responding yet. Try rendering manually.', 'warning')
     }
 
     detectBackend()
