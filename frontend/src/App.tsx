@@ -160,6 +160,23 @@ export default function App() {
 
   useEffect(() => {
     async function detectBackend() {
+      // Check Docker backend first (preferred — gives STL + admesh validation)
+      try {
+        const r = await fetch('/api/health', { signal: AbortSignal.timeout(3000) })
+        if (r.ok) {
+          setBackendMode('docker')
+          log('Connected to Docker backend', 'success')
+          if (!initialRenderDone.current) {
+            initialRenderDone.current = true
+            setTimeout(() => render(useEditorStore.getState().code), 500)
+          }
+          return
+        }
+      } catch {
+        // Expected timeout when Docker backend is not running
+      }
+
+      // Fallback: try standalone implicitsnap (non-Docker setup)
       try {
         const r = await fetch('/render/?source=sphere(1);&callback=__test&format=jsTHREE', {
           signal: AbortSignal.timeout(3000),
@@ -175,21 +192,6 @@ export default function App() {
         }
       } catch {
         // Expected timeout when implicitsnap is not running
-      }
-
-      try {
-        const r = await fetch('/api/health', { signal: AbortSignal.timeout(3000) })
-        if (r.ok) {
-          setBackendMode('docker')
-          log('Connected to Docker backend', 'success')
-          if (!initialRenderDone.current) {
-            initialRenderDone.current = true
-            setTimeout(() => render(useEditorStore.getState().code), 500)
-          }
-          return
-        }
-      } catch {
-        // Expected timeout when Docker backend is not running
       }
 
       setBackendMode('docker')

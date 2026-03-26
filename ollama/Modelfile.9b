@@ -1,8 +1,10 @@
 FROM hf.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct
 
-PARAMETER temperature 0.3
-PARAMETER top_p 0.9
-PARAMETER num_ctx 8192
+PARAMETER temperature 0.8
+PARAMETER top_p 0.95
+PARAMETER top_k 40
+PARAMETER repeat_penalty 1.1
+PARAMETER num_ctx 32768
 PARAMETER stop "<|endoftext|>"
 PARAMETER stop "<|im_start|>"
 

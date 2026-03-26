@@ -342,7 +342,7 @@ function consumeLeadingEcho(token, state) {
 
 const MODEL_PROFILES = {
   'implicitcad-dev':  { contextWindow: 4096, maxOutput: 768 },
-  'implicitcad-9b':   { contextWindow: 8192, maxOutput: 2048 },
+  'implicitcad-9b':   { contextWindow: 32768, maxOutput: 2048 },
   'implicitcad-27b':  { contextWindow: 8192, maxOutput: 2048 },
 }
 const DEFAULT_PROFILE = { contextWindow: 4096, maxOutput: 1024 }
@@ -498,8 +498,12 @@ async function callOllama(messages, model, stream = false) {
       model,
       messages,
       stream,
-      think: false,
-      options: { num_predict: profile.maxOutput },
+      // Let the model think — server-side stripThinkBlocks() handles cleanup.
+      // Suppressing thinking (think:false) degrades output quality.
+      options: {
+        num_predict: profile.maxOutput,
+        repeat_penalty: 1.1,
+      },
     }),
   })
   if (!resp.ok) {

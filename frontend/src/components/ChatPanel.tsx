@@ -34,7 +34,6 @@ export function ChatPanel() {
   const addMessage = useChatStore((s) => s.addMessage)
   const setLoading = useChatStore((s) => s.setLoading)
   const setStreaming = useChatStore((s) => s.setStreaming)
-  const appendStreamToken = useChatStore((s) => s.appendStreamToken)
   const finalizeStream = useChatStore((s) => s.finalizeStream)
 
   // Provider state
