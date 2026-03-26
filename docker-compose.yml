@@ -19,7 +19,9 @@ services:
       dockerfile: Dockerfile
     container_name: implicitcad-server
     ports:
-      - "4000:4000"
+      # Use a higher host port by default to avoid Windows reserved/blocked ports.
+      # Override with SERVER_HOST_PORT in .env if this port is also unavailable.
+      - "${SERVER_HOST_PORT:-14000}:4000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
