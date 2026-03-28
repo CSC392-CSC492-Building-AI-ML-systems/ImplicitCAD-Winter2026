@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/02-object-anchored-add/04-under-object/05-sphere-with-gap-below-offset-cube-bottom-face/expected/initial.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -5.000000, Max X = -1.600000
+Min Y =  1.750000, Max Y =  4.550000
+Min Z =  2.600000, Max Z =  4.200000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  7192                7192
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     1       Volume          :    15.225666
+Degenerate facets     :     0       Surface area    :    38.630409
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

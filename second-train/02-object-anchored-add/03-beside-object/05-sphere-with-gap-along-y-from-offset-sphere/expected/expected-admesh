@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/02-object-anchored-add/03-beside-object/05-sphere-with-gap-along-y-from-offset-sphere/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -3.050000, Max X = -0.450000
+Min Y =  1.100000, Max Y =  6.044221
+Min Z = -0.800000, Max Z =  1.800000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  5548                5548
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     2       Volume          :    12.180943
+Degenerate facets     :     0       Surface area    :    31.315748
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :    48

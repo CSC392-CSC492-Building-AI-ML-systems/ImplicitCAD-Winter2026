@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/02-object-anchored-add/03-beside-object/02-cylinder-touching-side-of-target-cylinder-in-x/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -2.000000, Max X =  5.000000
+Min Y = -1.997499, Max Y =  1.997499
+Min Z = -0.004540, Max Z =  4.004540
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  7568                7568
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     1       Volume          :    78.442909
+Degenerate facets     :     0       Surface area    :    121.758842
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     4

@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/02-object-anchored-add/02-on-top-of-cylinder/05-sphere-with-gap-above-offset-cylinder-top-face/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -6.597234, Max X = -1.802766
+Min Y =  0.902766, Max Y =  5.697234
+Min Z = -1.112503, Max Z =  5.239731
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  5944                5944
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     2       Volume          :    66.770226
+Degenerate facets     :     0       Surface area    :    103.541855
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

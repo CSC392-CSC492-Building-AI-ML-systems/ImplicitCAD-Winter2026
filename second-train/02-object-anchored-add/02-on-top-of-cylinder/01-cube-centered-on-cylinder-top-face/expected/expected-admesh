@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/02-object-anchored-add/02-on-top-of-cylinder/01-cube-centered-on-cylinder-top-face/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -2.000000, Max X =  2.000000
+Min Y = -2.000000, Max Y =  2.000000
+Min Z = -0.010920, Max Z =  7.000000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  6232                6232
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     1       Volume          :    77.124008
+Degenerate facets     :     0       Surface area    :    110.904396
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :    18

@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/02-object-anchored-add/03-beside-object/04-cube-touching-left-face-of-offset-target-cube/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X =  0.896786, Max X =  5.400000
+Min Y = -3.100000, Max Y =  0.500000
+Min Z =  1.397857, Max Z =  5.602143
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  6628                6628
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     1       Volume          :    49.421688
+Degenerate facets     :     0       Surface area    :    86.874657
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/02-object-anchored-add/01-on-top-of-cube/05-cylinder-on-top-right-back-corner-of-offset-cube/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -3.400000, Max X =  2.999774
+Min Y =  1.200000, Max Y =  5.598406
+Min Z = -0.802735, Max Z =  5.204550
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  5196                5196
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     1       Volume          :    60.305294
+Degenerate facets     :     0       Surface area    :    108.592606
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :    13
