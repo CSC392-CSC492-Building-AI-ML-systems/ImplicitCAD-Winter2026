@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/06-interaction-constraint-add/02-disjoint-with-gap/05-cube-gap-from-offset-sphere-along-y/expected/initial.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -5.597232, Max X = -2.802768
+Min Y =  0.902768, Max Y =  3.697232
+Min Z =  0.352768, Max Z =  3.147232
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  5476                5476
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     1       Volume          :    11.457085
+Degenerate facets     :     0       Surface area    :    24.592020
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

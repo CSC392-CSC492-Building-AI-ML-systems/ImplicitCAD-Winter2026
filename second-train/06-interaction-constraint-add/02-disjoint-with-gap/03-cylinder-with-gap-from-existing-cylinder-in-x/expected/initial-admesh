@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/06-interaction-constraint-add/02-disjoint-with-gap/03-cylinder-with-gap-from-existing-cylinder-in-x/expected/initial.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -0.998366, Max X =  0.998366
+Min Y = -0.998366, Max Y =  0.998366
+Min Z = -0.002330, Max Z =  4.002330
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  6524                6524
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     1       Volume          :    12.538762
+Degenerate facets     :     0       Surface area    :    31.342138
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     8

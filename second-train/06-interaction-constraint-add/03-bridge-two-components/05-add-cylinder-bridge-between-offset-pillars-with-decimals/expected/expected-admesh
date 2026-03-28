@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/06-interaction-constraint-add/03-bridge-two-components/05-add-cylinder-bridge-between-offset-pillars-with-decimals/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -3.295687, Max X =  3.896474
+Min Y = -4.199848, Max Y = -2.000152
+Min Z =  0.496438, Max Z =  4.703562
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  7764                7764
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     1       Volume          :    27.795366
+Degenerate facets     :     0       Surface area    :    71.474655
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :    16

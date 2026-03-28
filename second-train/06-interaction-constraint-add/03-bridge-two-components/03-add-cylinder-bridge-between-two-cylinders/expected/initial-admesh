@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/06-interaction-constraint-add/03-bridge-two-components/03-add-cylinder-bridge-between-two-cylinders/expected/initial.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -0.800000, Max X =  5.800000
+Min Y = -0.800000, Max Y =  0.800000
+Min Z = -0.003243, Max Z =  3.003243
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  6528                6528
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     2       Volume          :    12.019534
+Degenerate facets     :     0       Surface area    :    37.943634
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

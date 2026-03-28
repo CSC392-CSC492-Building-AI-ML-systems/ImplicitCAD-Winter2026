@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/06-interaction-constraint-add/01-touch-without-overlap/05-cylinder-touches-top-of-offset-cylinder-with-decimals/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -4.550000, Max X = -1.850000
+Min Y =  0.400000, Max Y =  3.100000
+Min Z =  0.593431, Max Z =  5.303743
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  6299                6300
+Facets with 1 disconnected edge  :     3                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     3                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     1       Volume          :    21.132917
+Degenerate facets     :     0       Surface area    :    46.010551
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     1
+Facets reversed       :     1
+Backwards edges       :     0
+Normals fixed         :    28

@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/06-interaction-constraint-add/02-disjoint-with-gap/04-sphere-gap-above-offset-cylinder-top-face/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X =  1.250000, Max X =  3.450000
+Min Y = -2.500000, Max Y = -0.300000
+Min Z =  0.539515, Max Z =  6.145255
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  7100                7100
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     2       Volume          :    15.891718
+Degenerate facets     :     0       Surface area    :    41.268379
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     8

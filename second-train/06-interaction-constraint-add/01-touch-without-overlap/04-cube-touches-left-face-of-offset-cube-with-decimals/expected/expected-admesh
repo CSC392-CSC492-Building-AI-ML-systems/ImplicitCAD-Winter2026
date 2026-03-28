@@ -1,0 +1,23 @@
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : second-train/06-interaction-constraint-add/01-touch-without-overlap/04-cube-touches-left-face-of-offset-cube-with-decimals/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -0.150000, Max X =  4.850000
+Min Y = -2.400637, Max Y =  0.400637
+Min Z =  0.799350, Max Z =  2.700650
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  6760                6760
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     1       Volume          :    20.979782
+Degenerate facets     :     0       Surface area    :    50.250633
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0
