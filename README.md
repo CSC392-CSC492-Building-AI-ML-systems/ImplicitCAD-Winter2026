@@ -193,7 +193,7 @@ The AI chat panel supports multiple providers. Select in the UI or configure via
 | Port conflict on 14000 | Change `SERVER_HOST_PORT` in `.env` |
 | Vite proxy errors | Ensure Docker backends are running: `docker compose up -d implicitcad server` |
 | "Docker backend not responding" | Wait ~10s after `docker compose up` for ImplicitCAD to compile its first build |
-| Ollama not detected | Check `OLLAMA_URL` in `.env`. On Linux Docker (non-Desktop), use your host IP instead of `host.docker.internal` |
+| Ollama not detected (Linux) | Ollama must listen on all interfaces: `sudo systemctl edit ollama`, add `Environment="OLLAMA_HOST=0.0.0.0"` under `[Service]`, then `sudo systemctl restart ollama`. Set `OLLAMA_URL=http://<bridge-ip>:11434` in `.env` where `<bridge-ip>` is your Docker bridge IP (find it with `ip -4 addr show docker0` or `docker network inspect bridge`; typically `172.17.0.1`). `./studio.sh` will auto-detect and guide you. |
 | Build fails with OOM | Increase Docker memory limit to 4 GB+ (Docker Desktop → Settings → Resources) |
 | Frontend shows blank page | Check browser console. Try `docker compose logs frontend` for nginx errors |
 

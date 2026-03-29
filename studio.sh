@@ -136,6 +136,30 @@ detect_system() {
   if ! $OLLAMA_API_OK; then
     _try_ollama_url "http://host.docker.internal:11434" || true
   fi
+  if ! $OLLAMA_API_OK && [ "$OS_NAME" = "Linux" ]; then
+    # Linux (non-Desktop Docker): try the Docker bridge interface IP.
+    # This is the IP containers use to reach host services — NOT the LAN gateway.
+    local bridge_ip=""
+    # Method 1: docker0 interface IP (most common)
+    bridge_ip=$(ip -4 addr show docker0 2>/dev/null | awk '/inet /{gsub(/\/.*/, "", $2); print $2}' || true)
+    # Method 2: Docker bridge network gateway via docker inspect
+    if [ -z "$bridge_ip" ] && command -v docker &>/dev/null; then
+      bridge_ip=$(docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null || true)
+    fi
+    if [ -n "$bridge_ip" ]; then
+      _try_ollama_url "http://${bridge_ip}:11434" || true
+    fi
+    if ! $OLLAMA_API_OK && ! $OLLAMA_RUNNING; then
+      warn "Ollama not reachable from Docker. On Linux, Ollama must listen on all interfaces:"
+      echo -e "    ${C}sudo systemctl edit ollama${D}  then add:"
+      echo -e "    ${DIM}[Service]${D}"
+      echo -e "    ${DIM}Environment=\"OLLAMA_HOST=0.0.0.0\"${D}"
+      echo -e "    Then: ${C}sudo systemctl restart ollama${D}"
+      if [ -n "$bridge_ip" ]; then
+        echo -e "    And set in .env: ${C}OLLAMA_URL=http://${bridge_ip}:11434${D}"
+      fi
+    fi
+  fi
   if ! $OLLAMA_API_OK && [ "$OS_NAME" = "WSL2" ]; then
     # WSL: try Windows host IP from /etc/resolv.conf
     local win_ip

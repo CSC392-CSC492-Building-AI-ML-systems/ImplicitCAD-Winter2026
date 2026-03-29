@@ -315,7 +315,27 @@ function extractCode(response, inputCode, inputPrompt) {
     return codeLines.join('\n').trim() || trimmed
   }
 
-  return trimmed
+  // Last resort: find the earliest OpenSCAD primitive that starts a contiguous
+  // code tail at the end of the response. Reasoning prose comes first, code last.
+  // Collect all primitive positions, then pick the earliest one whose slice to end
+  // contains only code (no sentence-like prose lines between primitives).
+  const primitives = /(?:union|difference|intersection|cube|sphere|cylinder|translate|rotate|scale|linear_extrude|rotate_extrude|hull|module|include|import|torus|ellipsoid|cone)\s*\(/gi
+  const matches = []
+  let m2
+  while ((m2 = primitives.exec(trimmed)) !== null) {
+    matches.push(m2.index)
+  }
+  // Try from the earliest match — the longest valid tail wins
+  for (const idx of matches) {
+    const tail = trimmed.slice(idx).trim()
+    if (!/[;}]/.test(tail)) continue
+    // Reject if the tail still contains obvious prose (sentence with 5+ words before any code)
+    const firstLine = tail.split('\n')[0]
+    if (/^[A-Z][a-z]+ [a-z]+ [a-z]+ [a-z]+ [a-z]+/i.test(firstLine)) continue
+    return tail
+  }
+
+  return ''
 }
 
 function consumeLeadingEcho(token, state) {
@@ -489,6 +509,12 @@ function callLLMCli(prompt) {
 
 // ── Provider: Ollama ────────────────────────────────────────────────────────
 
+/** Extract text from an Ollama message object.
+ *  Qwen3.5 thinking models put output in `thinking` instead of `content`. */
+function getOllamaText(message) {
+  return message?.content || message?.thinking || ''
+}
+
 async function callOllama(messages, model, stream = false) {
   const profile = getModelProfile(model)
   const resp = await fetch(`${OLLAMA_URL}/api/chat`, {
@@ -512,7 +538,7 @@ async function callOllama(messages, model, stream = false) {
   }
   if (stream) return resp.body
   const data = await resp.json()
-  return data.message?.content || ''
+  return getOllamaText(data.message)
 }
 
 async function listOllamaModels() {
@@ -623,7 +649,7 @@ async function* normalizeStream(providerStream, provider, traceId) {
           if (!line.trim()) continue
           try {
             const data = JSON.parse(line)
-            let token = data.message?.content || ''
+            let token = getOllamaText(data.message)
             // Debug: log first 10 raw events with full field structure
             if (process.env.DEBUG_LLM_STREAM === '1' && rawEventCount < 10) {
               rawEventCount++
