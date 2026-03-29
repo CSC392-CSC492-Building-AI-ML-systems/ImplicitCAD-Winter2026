@@ -494,7 +494,10 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
             const writable = await tab.handle.createWritable()
             await writable.write(content)
             await writable.close()
-          } catch {}
+          } catch (e) {
+            useEditorStore.getState().log(`Failed to save file: ${e instanceof Error ? e.message : e}`, 'error')
+            useEditorStore.getState().addToast('Failed to save some files', 'error')
+          }
         }
       }
       set({

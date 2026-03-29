@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { Code2, BookOpen, MessageSquare, Box, Terminal, GripVertical } from 'lucide-react'
 import { useLayoutStore, type PanelId, type ZoneId } from '../stores/layoutStore'
 import { useFileTreeStore } from '../stores/fileTreeStore'
+import { useEditorStore } from '../stores/editorStore'
 
 const PANEL_META: Record<PanelId, { icon: typeof Code2; label: string }> = {
   code: { icon: Code2, label: 'Code' },
@@ -28,6 +29,8 @@ export function TabBar({ zone, actions }: TabBarProps) {
   const setDragState = useLayoutStore((s) => s.setDragState)
   const activeFile = useFileTreeStore((s) => s.activeFile)
   const isDirty = useFileTreeStore((s) => s.isDirty)
+  const unreadErrors = useEditorStore((s) => s.unreadErrors)
+  const clearUnreadErrors = useEditorStore((s) => s.clearUnreadErrors)
 
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -135,7 +138,10 @@ export function TabBar({ zone, actions }: TabBarProps) {
                 draggable
                 onDragStart={(e) => handleDragStart(e, panelId)}
                 onDragEnd={handleDragEnd}
-                onClick={() => setActiveTab(zone, panelId)}
+                onClick={() => {
+                  setActiveTab(zone, panelId)
+                  if (panelId === 'output') clearUnreadErrors()
+                }}
                 title={title}
                 className={`flex items-center gap-1.5 h-full text-xs font-medium transition-colors border-b-2 px-2 cursor-grab active:cursor-grabbing select-none ${
                   isActive
@@ -145,6 +151,9 @@ export function TabBar({ zone, actions }: TabBarProps) {
               >
                 <Icon size={13} />
                 <span>{meta.label}</span>
+                {panelId === 'output' && unreadErrors > 0 && !isActive && (
+                  <span className="h-2 w-2 rounded-full bg-error shrink-0 animate-pulse" aria-label={`${unreadErrors} unread errors`} />
+                )}
                 {showCodeContext && (
                   <>
                     <span className="h-1 w-1 rounded-full bg-current opacity-35" />

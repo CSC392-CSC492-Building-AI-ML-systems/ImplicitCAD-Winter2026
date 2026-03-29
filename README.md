@@ -15,26 +15,43 @@ This project uses a fine-tuned Qwen3.5 9B model for OpenSCAD code generation, ho
 ```bash
 git clone https://github.com/CSC392-CSC492-Building-AI-ML-systems/ImplicitCAD-Winter2026.git
 cd ImplicitCAD-Winter2026
-./install.sh
+cp .env.example .env          # Review and adjust if needed
+./studio.sh                   # Interactive TUI — select "First-time setup"
 ```
 
 > First build takes ~15-20 min (compiling ImplicitCAD from Haskell source). Subsequent starts take seconds.
 
-### Requirements
+### System Requirements
 
-- **Docker** with Docker Compose
+- **Docker** 20+ with Docker Compose v2
+- **RAM**: 4 GB minimum (8 GB recommended for AI model inference)
+- **Disk**: ~10 GB free for Docker images (first build)
+- **Node.js** 18+ (only for local frontend development)
+
+### Using the TUI
+
+`./studio.sh` is the single entry point for all operations:
+
+| Menu Option | What it does |
+|-------------|-------------|
+| First-time setup | Installs Ollama, verifies Docker |
+| Start Studio | Launches Docker services, starts Ollama, opens browser |
+| Add 0.8B / 9B | Downloads AI models for code generation |
+| View status | Shows Docker services, health checks, Ollama status |
+| Advanced tools | Shell into containers, run smoke tests, compile files, tail logs |
+| Stop all services | Shuts down Docker services and Ollama |
+| Full rebuild | Rebuilds all containers from scratch |
+
+Legacy wrapper scripts (`install.sh`, `up.sh`) still work — they delegate to `studio.sh`.
 
 ### Docker Commands
 
 ```bash
-./up.sh -d                        # Start all services and show ports
-./up.sh -d --build                # Rebuild and start, then show ports
-docker compose down               # Stop
-docker compose logs -f            # View logs
+docker compose up -d --build  # Build and start all services
+docker compose down           # Stop
+docker compose logs -f        # View logs
 docker compose build --no-cache   # Full rebuild
 ```
-
-`./up.sh` wraps `docker compose up` and automatically prints the published ports after startup. The frontend uses a dynamic host port to avoid conflicts with anything already running on port 3000.
 
 ## Development (recommended workflow)
 
@@ -50,19 +67,20 @@ npm install --legacy-peer-deps
 npm run dev
 ```
 
-Vite starts at **http://localhost:3000** with hot module replacement. API calls are proxied to the Docker backends automatically (`/api` -> `localhost:4000`, `/render` -> `localhost:8080`).
+Vite starts at **http://localhost:3000** with hot module replacement. API calls are proxied to the Docker backends automatically (`/api` -> `localhost:14000`, `/render` -> `localhost:8080`). Override proxy targets in `.env`:
+
+```bash
+VITE_API_URL=http://localhost:14000
+VITE_RENDER_URL=http://localhost:8080
+```
 
 ### Running everything in Docker (production-like)
 
 ```bash
-./up.sh -d --build
+./studio.sh    # Select "Start Studio"
 ```
 
 This builds the frontend into a static nginx image. Use when testing the production setup or deploying.
-
-### Prerequisites (local frontend dev)
-
-- **Node.js** 18+
 
 ### Run the Server standalone (no Docker)
 
@@ -72,24 +90,18 @@ npm install
 node server.js
 ```
 
-API server starts at **http://localhost:4000**. Configure with environment variables:
+API server starts at **http://localhost:4000**. See `.env.example` for all configurable environment variables.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `4000` | Server port |
-| `WORKSPACE` | `./_workspace` | Working directory for file ops |
-| `LLM_COMMAND` | `claude -p` | CLI command for AI code generation |
-| `EXTOPENSCAD` | auto-detected | Path to extopenscad binary |
-| `COMPILE_TIMEOUT` | `60` | Compilation timeout in seconds |
-
-### Run ImplicitCAD Directly
+### Compile .scad files via CLI
 
 ```bash
-# Via the CLI wrapper (requires Docker)
-./icad compile mymodel.scad -o mymodel.stl
+# Via studio.sh (requires Docker)
+./studio.sh compile mymodel.scad -o mymodel.stl
 
-# Or via Docker
-docker exec implicitcad-engine extopenscad -o output.stl input.scad
+# Or shell into a container for interactive use
+./studio.sh exec server
+# Inside: "$EXTOPENSCAD" -o output.stl input.scad
+# Inside: admesh output.stl
 ```
 
 ## Architecture
@@ -111,7 +123,7 @@ docker exec implicitcad-engine extopenscad -o output.stl input.scad
 | Container | Role | Port |
 |-----------|------|------|
 | `implicitcad-engine` | ImplicitCAD: `implicitsnap` + `extopenscad` | host `8080` -> container `8080` |
-| `implicitcad-server` | Node.js API: compile, AI chat, admesh validation | host `4000` -> container `4000` |
+| `implicitcad-server` | Node.js API: compile, AI chat, admesh validation | host `SERVER_HOST_PORT` (default `14000`) -> container `4000` |
 | `implicitcad-frontend` | React app via nginx (production only) | dynamic host port -> container `3000` |
 
 The server container uses a Debian base image (matching the engine) so the shared `extopenscad` binary runs correctly. The binary is shared via a Docker named volume mounted at `/opt/implicitcad-bin`.
@@ -123,6 +135,7 @@ The server container uses a Debian base image (matching the engine) so the share
 - **AI Assistant** — Generate ImplicitCAD code from natural language (configurable LLM backend)
 - **File Explorer** — Browser File System Access API for local folder editing
 - **Export** — Download STL, viewport screenshots
+- **Error Notifications** — Toast alerts and Output console with unread error badge
 
 ### Viewport Controls
 
@@ -153,31 +166,36 @@ Grid planes default to XY only (floor plane). Toggle XZ (front wall) or YZ (side
 
 ```
 frontend/          React + Vite + TypeScript app
-server/            Node.js API server
+server/            Node.js API server (zero dependencies)
 docker/            ImplicitCAD Dockerfile + entrypoint
 ai_context/        ImplicitCAD language reference for LLM prompts
 prompt/            Prompt templates for LLM benchmarking
 test_files/        96 reference test cases (STL + admesh + prompts)
 second-train/      Training data for LLM fine-tuning
-install.sh         One-click Docker setup
-up.sh              Docker compose wrapper that prints published ports
-icad               CLI wrapper for ImplicitCAD via Docker
+studio.sh          TUI launcher — single entry point for all operations
+.env.example       Environment variable template
 ```
 
 ## AI Configuration
 
-```bash
-# Claude CLI (default)
-LLM_COMMAND="claude -p"
+The AI chat panel supports multiple providers. Select in the UI or configure via `.env`:
 
-# Ollama
-LLM_COMMAND="ollama run qwen3:32b"
+| Provider | Setup |
+|----------|-------|
+| **Ollama** (default) | Run `./studio.sh` → "Add 9B" to download the fine-tuned model |
+| **OpenAI** | Set `OPENAI_API_KEY` in `.env` or via the API Keys dialog in the UI |
+| **Anthropic** | Set `ANTHROPIC_API_KEY` in `.env` or via the API Keys dialog in the UI |
 
-# Simon Willison's llm
-LLM_COMMAND="llm"
-```
+## Troubleshooting
 
-Set via `.env` or pass as an environment variable.
+| Problem | Solution |
+|---------|----------|
+| Port conflict on 14000 | Change `SERVER_HOST_PORT` in `.env` |
+| Vite proxy errors | Ensure Docker backends are running: `docker compose up -d implicitcad server` |
+| "Docker backend not responding" | Wait ~10s after `docker compose up` for ImplicitCAD to compile its first build |
+| Ollama not detected | Check `OLLAMA_URL` in `.env`. On Linux Docker (non-Desktop), use your host IP instead of `host.docker.internal` |
+| Build fails with OOM | Increase Docker memory limit to 4 GB+ (Docker Desktop → Settings → Resources) |
+| Frontend shows blank page | Check browser console. Try `docker compose logs frontend` for nginx errors |
 
 ## License
 

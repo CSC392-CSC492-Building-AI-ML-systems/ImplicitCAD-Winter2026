@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useEditorStore } from './editorStore'
 
 export interface ChatMessage {
   id: string
@@ -54,6 +55,7 @@ interface ChatState {
   activeProvider: string | null
   activeModel: string | null
   providerStatus: ProviderStatus | null
+  providerError: string | null
 
   // Session management
   createNewSession: () => void
@@ -87,6 +89,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   activeProvider: null,
   activeModel: null,
   providerStatus: null,
+  providerError: null,
 
   activeSession: () => {
     const s = get()
@@ -110,7 +113,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: id }),
-      }).catch(() => {})
+      }).catch((e) => console.warn('Session reset failed:', e))
 
       if (s.sessions.length <= 1) {
         return {
@@ -198,7 +201,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: s.activeSessionId }),
-      }).catch(() => {})
+      }).catch((e) => console.warn('Session reset failed:', e))
       return {
         sessions: s.sessions.map(sess =>
           sess.id === s.activeSessionId
@@ -218,8 +221,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const resp = await fetch('/api/providers/active')
       if (!resp.ok) return
       const data = await resp.json()
-      set({ activeProvider: data.provider, activeModel: data.model })
-    } catch {}
+      set({ activeProvider: data.provider, activeModel: data.model, providerError: null })
+    } catch {
+      useEditorStore.getState().log('Failed to load AI provider config', 'warning')
+      set({ providerError: 'Cannot reach server' })
+    }
   },
 
   selectProvider: async (provider, model) => {
@@ -231,8 +237,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       })
       if (!resp.ok) return
       const data = await resp.json()
-      set({ activeProvider: data.provider, activeModel: data.model })
-    } catch {}
+      set({ activeProvider: data.provider, activeModel: data.model, providerError: null })
+    } catch {
+      const msg = 'Failed to switch AI provider'
+      useEditorStore.getState().log(msg, 'error')
+      useEditorStore.getState().addToast(msg, 'error')
+      set({ providerError: msg })
+    }
   },
 
   fetchProviderStatus: async () => {
@@ -248,7 +259,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         },
         activeProvider: data.active?.provider,
         activeModel: data.active?.model,
+        providerError: null,
       })
-    } catch {}
+    } catch {
+      set({ providerError: 'Cannot reach server' })
+    }
   },
 }))

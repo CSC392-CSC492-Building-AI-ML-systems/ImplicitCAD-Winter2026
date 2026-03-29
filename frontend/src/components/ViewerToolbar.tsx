@@ -74,7 +74,9 @@ export function ViewerToolbar({ onRerender }: { onRerender?: () => void }) {
       const exporter = new STLExporter()
       const stlString = exporter.parse(mesh)
       return new Blob([stlString], { type: 'application/sla' })
-    } catch {
+    } catch (e) {
+      useEditorStore.getState().log(`STL export failed: ${e instanceof Error ? e.message : e}`, 'error')
+      useEditorStore.getState().addToast('Failed to export STL', 'error')
       return null
     }
   }

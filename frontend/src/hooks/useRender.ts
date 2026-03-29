@@ -63,6 +63,7 @@ export function useRender() {
         if (!resp.ok) {
           const data = await resp.json().catch(() => ({ error: 'Unknown error' }))
           log(`Compile error: ${data.error}`, 'error')
+          useEditorStore.getState().addToast('Compilation failed', 'error')
           useEditorStore.getState().setErrors(parseErrors(data.error || ''))
           setRendering(false)
           return
@@ -74,7 +75,8 @@ export function useRender() {
         if (validationHeader) {
           try {
             setValidation(JSON.parse(validationHeader))
-          } catch {
+          } catch (e) {
+            console.warn('Validation header parse error:', e)
             setValidation(null)
           }
         } else {
@@ -94,6 +96,7 @@ export function useRender() {
           log('Compilation cancelled', 'warning')
         } else {
           log(`Connection error: ${e instanceof Error ? e.message : e}`, 'error')
+          useEditorStore.getState().addToast('Connection error — is the server running?', 'error')
         }
         useEditorStore.getState().setErrors([])
       } finally {
@@ -176,6 +179,7 @@ export function useRender() {
         cleanup()
         setRendering(false)
         log('Cannot connect to implicitsnap. Is it running on port 8080?', 'error')
+        useEditorStore.getState().addToast('Cannot connect to render server', 'error')
         useEditorStore.getState().setErrors([])
       }
       document.body.appendChild(script)

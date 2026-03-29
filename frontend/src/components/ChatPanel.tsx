@@ -43,6 +43,7 @@ export function ChatPanel() {
   const fetchActiveConfig = useChatStore((s) => s.fetchActiveConfig)
   const selectProvider = useChatStore((s) => s.selectProvider)
   const fetchProviderStatus = useChatStore((s) => s.fetchProviderStatus)
+  const providerError = useChatStore((s) => s.providerError)
 
   // Editor state
   const code = useEditorStore((s) => s.code)
@@ -64,7 +65,7 @@ export function ChatPanel() {
     fetch(`/api/providers/models?provider=${activeProvider}`)
       .then(r => r.json())
       .then(data => setAvailableModels(data.models || []))
-      .catch(() => setAvailableModels([]))
+      .catch((e) => { console.warn('Model fetch failed:', e); setAvailableModels([]) })
   }, [activeProvider])
 
   const handleProviderChange = (newProvider: string) => {
@@ -76,7 +77,11 @@ export function ChatPanel() {
         const model = models[0] || ''
         if (model) selectProvider(newProvider, model)
       })
-      .catch(() => {})
+      .catch(() => {
+        const { log: logMsg, addToast } = useEditorStore.getState()
+        logMsg('Failed to update provider', 'error')
+        addToast('Failed to update provider', 'error')
+      })
   }
 
   const handleModelChange = (newModel: string) => {
@@ -84,6 +89,7 @@ export function ChatPanel() {
   }
 
   const getStatusIndicator = () => {
+    if (providerError) return { color: 'bg-error', label: providerError }
     if (!providerStatus) return { color: 'bg-text-muted', label: 'Loading...' }
     if (activeProvider === 'ollama') {
       return providerStatus.ollamaReachable
@@ -210,7 +216,9 @@ export function ChatPanel() {
                   // (prompt echo, thinking text, template artifacts).
                   // Only the final extracted code (data.code on done) is shown to the user.
                 }
-              } catch {}
+              } catch (parseErr) {
+                console.warn('Stream JSON parse error:', parseErr)
+              }
             }
           }
         }
