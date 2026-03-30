@@ -1,1 +1,23 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/01-absolute-placement-add/03-cylinder-at-base-center/02-tapered-cylinder-r1-r2-h-base-center-xyz/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -0.001814, Max X =  8.984551
+Min Y = -4.984551, Max Y =  11.001814
+Min Z = -0.018841, Max Z =  7.008705
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  2952                2952
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     2       Volume          :    118.982086
+Degenerate facets     :     0       Surface area    :    150.827438
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

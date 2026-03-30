@@ -1,1 +1,23 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/05-count-and-arrangement-add/02-k-primitives-in-grid/08-3-by-2-cubes-float-grid/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X =  0.500000, Max X =  6.750000
+Min Y =  0.500000, Max Y =  4.500000
+Min Z = -0.000000, Max Z =  1.250000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  8712                8712
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     6       Volume          :    11.718737
+Degenerate facets     :     0       Surface area    :    56.247536
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

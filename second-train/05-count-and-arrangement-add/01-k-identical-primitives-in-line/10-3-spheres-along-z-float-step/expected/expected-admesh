@@ -1,1 +1,23 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/05-count-and-arrangement-add/01-k-identical-primitives-in-line/10-3-spheres-along-z-float-step/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -0.594505, Max X =  1.594505
+Min Y =  0.155495, Max Y =  2.344505
+Min Z = -0.594505, Max Z =  8.094505
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  7044                7044
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     3       Volume          :    16.598948
+Degenerate facets     :     0       Surface area    :    45.445133
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

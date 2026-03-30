@@ -1,1 +1,23 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/05-count-and-arrangement-add/01-k-identical-primitives-in-line/05-4-cones-along-y-step-s/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X =  0.521063, Max X =  3.478937
+Min Y = -7.478937, Max Y =  7.478937
+Min Z = -0.000000, Max Z =  3.547452
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  7440                7440
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     4       Volume          :    37.423279
+Degenerate facets     :     0       Surface area    :    106.518013
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

@@ -1,1 +1,23 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/05-count-and-arrangement-add/01-k-identical-primitives-in-line/06-6-tapered-cylinders-along-x-step-s/expected/initial.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -1.180356, Max X =  16.180357
+Min Y =  8.819644, Max Y =  11.180356
+Min Z = -0.004002, Max Z =  3.011618
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  9300                9300
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     5       Volume          :    39.385990
+Degenerate facets     :     0       Surface area    :    113.477768
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :    55

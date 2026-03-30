@@ -1,1 +1,23 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/05-count-and-arrangement-add/03-symmetric-set/10-6-cubes-three-pairs-mirrored-across-x0-float/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -4.500000, Max X =  4.500000
+Min Y = -3.200000, Max Y =  4.600000
+Min Z = -0.000000, Max Z =  1.400000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  5832                5832
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     6       Volume          :    16.463778
+Degenerate facets     :     0       Surface area    :    70.561104
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

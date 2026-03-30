@@ -1,1 +1,23 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/05-count-and-arrangement-add/02-k-primitives-in-grid/07-2-by-4-cones-step-dx-dy/expected/initial.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -6.989064, Max X =  6.989064
+Min Y = -0.989064, Max Y =  5.989064
+Min Z = -0.000000, Max Z =  3.000000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  5758                5758
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     7       Volume          :    30.096579
+Degenerate facets     :     0       Surface area    :    108.830353
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

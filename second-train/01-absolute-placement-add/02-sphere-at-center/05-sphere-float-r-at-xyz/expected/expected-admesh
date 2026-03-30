@@ -1,1 +1,23 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/01-absolute-placement-add/02-sphere-at-center/05-sphere-float-r-at-xyz/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X =  0.500000, Max X =  4.618867
+Min Y = -3.368868, Max Y =  2.500000
+Min Z =  0.500000, Max Z =  5.118867
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  4824                4824
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     2       Volume          :    35.462776
+Degenerate facets     :     0       Surface area    :    68.063858
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

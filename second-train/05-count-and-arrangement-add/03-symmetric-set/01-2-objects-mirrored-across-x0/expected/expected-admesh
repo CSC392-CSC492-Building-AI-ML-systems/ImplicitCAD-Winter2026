@@ -1,1 +1,23 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/05-count-and-arrangement-add/03-symmetric-set/01-2-objects-mirrored-across-x0/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -6.400000, Max X =  6.400000
+Min Y = -1.400000, Max Y =  1.400000
+Min Z =  0.600000, Max Z =  3.400000
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  4720                4720
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     2       Volume          :    22.809664
+Degenerate facets     :     0       Surface area    :    49.073540
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

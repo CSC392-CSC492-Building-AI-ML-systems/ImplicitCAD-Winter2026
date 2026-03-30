@@ -1,1 +1,24 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/01-absolute-placement-add/01-cube-at-origin/05-cube-minimal-size/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -0.199406, Max X =  1.100594
+Min Y = -0.199406, Max Y =  1.100594
+Min Z = -0.199406, Max Z =  1.100594
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 : 10952               10952
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     2       Volume          :     0.066805
+Degenerate facets     :     0       Surface area    :     1.003753
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0
+

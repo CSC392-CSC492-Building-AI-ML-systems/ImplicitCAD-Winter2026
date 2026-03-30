@@ -1,1 +1,23 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/01-absolute-placement-add/04-cone-at-base/03-cone-negative-coords/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -5.939927, Max X =  1.982885
+Min Y = -2.939926, Max Y =  1.982885
+Min Z = -3.003071, Max Z =  11.982885
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  3168                3168
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     2       Volume          :    53.886669
+Degenerate facets     :     0       Surface area    :    94.954872
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

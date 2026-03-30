@@ -1,1 +1,23 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/05-count-and-arrangement-add/01-k-identical-primitives-in-line/02-k-cylinders-along-y-step-s/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -1.000000, Max X =  1.000000
+Min Y = -1.000000, Max Y =  13.000000
+Min Z = -0.002858, Max Z =  4.002858
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 : 10256               10256
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     4       Volume          :    50.107128
+Degenerate facets     :     0       Surface area    :    125.176414
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0

@@ -1,1 +1,23 @@
-TODO
+================= Results produced by ADMesh version 1.0.0 ================
+Input file         : /workspace/second-train/01-absolute-placement-add/06-polygon-extrude/02-hexagon-extrude-at-position/expected/expected.stl
+File type          : Binary STL file
+Header             : 
+============== Size ==============
+Min X = -0.000000, Max X =  5.497776
+Min Y = -0.168752, Max Y =  5.003689
+Min Z = -0.004229, Max Z =  4.007712
+========= Facet Status ========== Original ============ Final ====
+Number of facets                 :  7348                7348
+Facets with 1 disconnected edge  :     0                   0
+Facets with 2 disconnected edges :     0                   0
+Facets with 3 disconnected edges :     0                   0
+Total disconnected facets        :     0                   0
+=== Processing Statistics ===       ====== Other Statistics ======
+Number of parts       :     1       Volume          :    93.803329
+Degenerate facets     :     0       Surface area    :    127.065475
+Edges fixed           :     0
+Facets removed        :     0
+Facets added          :     0
+Facets reversed       :     0
+Backwards edges       :     0
+Normals fixed         :     0
