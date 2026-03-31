@@ -1,13 +1,18 @@
 # Lowering Barriers to 3D Design: LLM-Assisted ImplicitCAD
 
-This repository is primarily a CSC398 research project on fine-tuning a large language model for ImplicitCAD-compatible SCAD code generation. The browser-based ImplicitCAD Studio app in this repo is the demonstration environment used to run, inspect, and evaluate that model in an end-to-end workflow.
+This project fine-tunes an LLM to turn natural-language 3D editing requests into compilable ImplicitCAD code. The browser-based ImplicitCAD Studio in this repo is the demonstration environment for running, inspecting, and evaluating that model end-to-end.
 
-The project combines:
+### Results at a Glance
 
-- a fine-tuned `Qwen3.5-9B` model for code generation
-- a small curated dataset of ImplicitCAD editing tasks
-- a Dockerized ImplicitCAD toolchain for reproducible compilation
-- a browser IDE for editing, previewing, and iterating on generated geometry
+| | |
+|---|---|
+| **Training data** | 1,746 examples across two stages (1,571 OpenSCAD-converted + 139 hand-curated ImplicitCAD) |
+| **Compilation success** | **80%** (24/30) vs 53% base model — whitepaper evaluation |
+| **Geometry matched intent** | **73%** (22/30) — whitepaper evaluation |
+| **Inference speed** | **2.26s** vs 44.12s per case (19.5x faster) — local benchmark |
+| **Training cost** | Under 5 minutes on a single A100, LoRA adapter ~300 MB |
+
+> Suitable for rapid prototyping, research, and education. Not intended for manufacturing guarantees or safety-critical use.
 
 ## Overview
 
@@ -15,91 +20,107 @@ Code-based 3D modeling tools such as OpenSCAD and ImplicitCAD are precise and re
 
 The main contribution of the project is the model-training and evaluation pipeline. ImplicitCAD Studio is the integrated demo environment built around that model.
 
-Model weights are hosted separately on Hugging Face:
+Model weights are hosted on Hugging Face (see links in the [Model](#model) section below).
 
-`https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct`
+<div align="center">
+  <img src="docs/studio-overview.png" alt="ImplicitCAD Studio — code editor, 3D viewer, and AI chat" width="800">
+  <br><em>ImplicitCAD Studio: edit code, compile to STL, preview in 3D, and generate code with AI</em>
+</div>
 
-> The 9B model is the main research artifact. The smaller `0.8B` option exposed by `./studio.sh` is a lightweight local test model, not the primary evaluated model from the whitepaper.
+### Quick Example
 
-## Research Summary
+**Prompt:** "Add a sphere on top of the cube"
+
+**Initial code:**
+```scad
+cube([20, 20, 20], center=true);
+```
+
+**Generated code:**
+```scad
+union() {
+  cube([20, 20, 20], center=true);
+  translate([0, 0, 15]) sphere(r=5);
+}
+```
+
+The model takes a natural-language editing instruction plus existing code, and outputs a complete updated program that compiles with ImplicitCAD.
+
+## Model
+
+### Trained Model
+
+| Artifact | Link |
+|----------|------|
+| Merged GGUF (Q4_K_M, ~5 GB) | [huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct](https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct) |
+| LoRA Adapter (~300 MB) | [huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-LoRA](https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-LoRA) |
+
+> The 9B model is the main research artifact. The `0.8B` option in `./studio.sh` is a lightweight test model, not the evaluated model from the whitepaper.
 
 ### Problem
 
-General-purpose LLMs can often produce code that looks plausible, but geometric code generation has an extra failure mode: code may compile while still producing the wrong shape. ImplicitCAD also has a smaller ecosystem than mainstream languages, which means less documentation, less training data, and fewer benchmark resources.
+General-purpose LLMs can produce code that looks plausible, but geometric code generation has an extra failure mode: code may compile while producing the wrong shape. ImplicitCAD has a smaller ecosystem than mainstream languages — less documentation, less training data, and no established benchmarks.
 
-This project focuses on that gap: ImplicitCAD-specific instruction following, verified compilation, and geometry-aware evaluation.
+This project targets that gap: ImplicitCAD-specific instruction following, verified compilation, and geometry-aware evaluation.
 
-### Dataset Construction
+### Two-Stage Training Strategy
 
-The fine-tuning dataset contains `139` curated examples. Each example includes:
+Training used a two-stage approach to build both breadth and depth:
 
-- a natural-language instruction
-- an existing SCAD program
-- the expected fully updated SCAD program after applying the requested change
+**Stage 1 — OpenSCAD Foundation** ([`first-train/`](first-train/)):
+- 1,571 training + 175 validation examples converted from OpenSCAD to ImplicitCAD-compatible code
+- Sourced from OpenSCAD datasets on Hugging Face, then adapted to ImplicitCAD syntax
+- Goal: teach the model basic SCAD syntax and common geometric patterns with broad coverage
 
-The dataset was built from the project's internal test cases and was designed to cover common geometric editing operations such as:
+**Stage 2 — ImplicitCAD Specialization:**
+- ImplicitCAD is a superset of OpenSCAD with different syntax, features, and compilation behavior
+- AI-converted OpenSCAD examples had poor quality (unsupported features like `hull()`, `minkowski()`)
+- Solution: `139` hand-curated ImplicitCAD-specific 3D logic problems, each with instruction + initial code + expected output
+- All examples manually verified to compile with the ImplicitCAD toolchain
+- Covers 6 difficulty tiers: absolute placement, object-anchored, pattern completion, bounding-box, count/arrangement, interaction constraints
 
-- translation
-- union
-- difference
-- object insertion
+The Stage 2 dataset is in [`second-train/`](second-train/) with the compiled JSONL at [`second-train/scad_sft_dataset.jsonl`](second-train/scad_sft_dataset.jsonl).
 
-All target programs were manually checked to ensure they compiled correctly with the ImplicitCAD toolchain before being used for training.
+### Fine-Tuning Configuration
 
-### Training Procedure
+| Parameter | Value |
+|-----------|-------|
+| Base model | `Qwen3.5-9B` |
+| Method | LoRA |
+| LoRA rank | `r=16` |
+| LoRA scaling | `alpha=32` |
+| LoRA dropout | `0` |
+| Sequence length | `8k` |
+| Optimizer | AdamW 8-bit |
+| Effective batch size | `8` |
+| Learning rate | `5e-5` |
+| Warmup steps | `5` |
+| Weight decay | `0.001` |
+| Schedule | linear |
+| Epochs | `2` |
+| Total update steps | `36` |
+| Hardware | Single A100 40 GB |
+| Training time | Under 5 minutes (Google Colab) |
 
-Each example was converted into the chat format expected by `Qwen3.5`, where:
-
-- the `user` message contains the instruction plus the initial code
-- the `assistant` message contains the expected full updated program
-
-Training used response-only supervision so that only assistant tokens contributed to the loss.
-
-The fine-tuning setup from the whitepaper:
-
-- Base model: `Qwen3.5-9B`
-- Method: `LoRA`
-- LoRA rank: `r=16`
-- LoRA scaling: `alpha=32`
-- LoRA dropout: `0`
-- Sequence length: `8k`
-- Optimizer: `AdamW 8-bit`
-- Effective batch size: `8`
-- Learning rate: `5e-5`
-- Warmup steps: `5`
-- Weight decay: `0.001`
-- Schedule: `linear`
-- Epochs: `2`
-- Total update steps: `36`
-- Hardware: single `A100 40 GB`
-- Runtime: under `5 minutes` in Google Colab
-
-The resulting LoRA adapter checkpoint is approximately `300 MB`.
-
-### Export and Local Deployment
-
-After training, the adapter was merged and exported to `GGUF` using Unsloth's GGUF export pipeline. The merged model was quantized to `Q4_K_M`, producing a final artifact of roughly `5 GB`.
-
-This export choice makes the model practical to run locally through tools such as:
-
-- `Ollama`
-- `llama.cpp`
-- `LM Studio`
-
-In this repository, the local AI workflow is built around `Ollama`.
+The resulting LoRA adapter is ~300 MB. After merging, the model was exported to GGUF Q4_K_M (~5 GB) via Unsloth for local inference through Ollama, llama.cpp, or LM Studio.
 
 ### Evaluation Results
 
-The whitepaper evaluates the fine-tuned model on a held-out set of `30` unseen prompts.
+**Whitepaper evaluation** (30-case held-out set):
 
-| Metric | Result |
-|--------|--------|
-| Compilation rate | `24/30` = `80%` |
-| Geometrically correct outputs | `22/30` |
-| Overall success rate on test set | about `73%` |
-| Untuned base-model compilation rate | `16/30` |
+| Metric | Base Model | Fine-Tuned | Improvement |
+|--------|-----------|------------|-------------|
+| **Compilation success** | 53% (16/30) | **80%** (24/30) | +27pp |
+| **Geometry matched intent** | — | **73%** (22/30) | — |
 
-These results show a clear improvement over the untuned base model, especially in compilation reliability and geometric alignment.
+**Additional local benchmark** (`test_files/lmstudio_scad_benchmark_results*.txt`):
+
+| Metric | Base Model | Fine-Tuned | Improvement |
+|--------|-----------|------------|-------------|
+| **Exact code match** | 30% (9/30) | **40%** (12/30) | +10pp |
+| **Avg inference time** | 44.12s/case | **2.26s/case** | **19.5x faster** |
+
+The fine-tuned model also produced much faster outputs in our local benchmark. Both compilation reliability and geometric alignment improved substantially over the base model.
 
 ### Scope and Limitations
 
@@ -250,6 +271,15 @@ The Studio supports multiple model backends in the chat panel:
 
 Configure defaults in `.env`, or use the API key dialog inside the app for cloud providers.
 
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd/Ctrl + Enter` | Compile and render |
+| `Cmd/Ctrl + S` | Save current file |
+| `Cmd/Ctrl + B` | Toggle file explorer |
+| `Cmd/Ctrl + Shift + P` | Command palette |
+
 ### Compile From the Command Line
 
 ```bash
@@ -267,8 +297,9 @@ server/            Node.js API server and compile / chat orchestration
 docker/            Dockerfiles and container entrypoints
 ollama/            Ollama Modelfiles for the local app models
 ai_context/        ImplicitCAD language reference material used by the server prompt
-second-train/      Training data and related model artifacts
-test_files/        Reference cases and benchmark assets
+first-train/       Stage 1 training data (1,571 train + 175 val, OpenSCAD converted to ImplicitCAD)
+second-train/      Stage 2 training data (139 curated ImplicitCAD examples)
+test_files/        Benchmark cases (30-case eval set + ADMesh validation)
 studio.sh          Main TUI entry point
 .env.example       Runtime configuration template
 ```
