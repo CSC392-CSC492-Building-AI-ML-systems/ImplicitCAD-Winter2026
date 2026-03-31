@@ -746,7 +746,7 @@ do_exec() {
   if [ -z "$service" ]; then
     echo "Select container to enter:"
     echo -e "  ${W}1)${D} server      — admesh, extopenscad, node (${C}recommended${D})"
-    echo -e "  ${W}2)${D} engine      — extopenscad, implicitsnap logs"
+    echo -e "  ${W}2)${D} engine      — extopenscad helper container"
     echo -e "  ${W}3)${D} frontend    — nginx config and logs"
     read -rp "  Choice [1]: " choice
     case "${choice:-1}" in
@@ -771,8 +771,8 @@ do_exec() {
     implicitcad)
       workdir="/app"
       echo -e "  ${G}Entering ImplicitCAD engine container${D}"
-      echo -e "  ${DIM}Tools: extopenscad, implicitsnap${D}"
-      echo -e "  ${DIM}Logs:  /app/log/${D}"
+      echo -e "  ${DIM}Tools: extopenscad${D}"
+      echo -e "  ${DIM}Purpose: shared binary volume + compile helper${D}"
       ;;
     frontend)
       shell="/bin/sh"
@@ -953,10 +953,14 @@ do_status() {
   fi
 
   # Engine
-  if curl -sf "http://localhost:8080" >/dev/null 2>&1; then
-    info "ImplicitCAD engine: reachable (port 8080)"
+  if $COMPOSE ps --status running implicitcad 2>/dev/null | grep -q implicitcad; then
+    if $COMPOSE exec -T implicitcad extopenscad --help >/dev/null 2>&1; then
+      info "ImplicitCAD engine: ready (extopenscad available)"
+    else
+      fail "ImplicitCAD engine: container running but extopenscad unavailable"
+    fi
   else
-    fail "ImplicitCAD engine: not responding (port 8080)"
+    fail "ImplicitCAD engine: not running"
   fi
 
   echo ""
@@ -970,7 +974,7 @@ advanced_tools_menu() {
     echo -e "  ${DIM}──────────────────────────────────────${D}"
     echo ""
     echo -e "  ${W} 1)${D} ${B}Shell into server${D}     admesh, extopenscad, node, /workspace"
-    echo -e "  ${W} 2)${D} ${B}Shell into engine${D}     extopenscad, implicitsnap logs"
+    echo -e "  ${W} 2)${D} ${B}Shell into engine${D}     extopenscad helper container"
     echo -e "  ${W} 3)${D} ${B}Tail service logs${D}     Follow Docker Compose logs"
     echo -e "  ${W} 4)${D} ${B}Run smoke tests${D}      5 compilation tests with timing"
     echo -e "  ${W} 5)${D} ${B}Compile .scad file${D}   Compile a file via Docker"

@@ -5,12 +5,10 @@ mkdir -p /opt/implicitcad-bin
 cp /usr/local/bin/extopenscad /opt/implicitcad-bin/extopenscad
 chmod +x /opt/implicitcad-bin/extopenscad
 
-echo "Starting ImplicitCAD services..."
+echo "Starting ImplicitCAD engine container..."
 echo "  extopenscad: $(extopenscad --help 2>&1 | head -1)"
+echo "  mode: shared binary volume + exec shell"
 
-# Create log directory (implicitsnap defaults to log/access.log and log/error.log)
-mkdir -p /app/log
-
-# Start implicitsnap (jsTHREE render server) on port 8080
-echo "  implicitsnap listening on :8080"
-exec implicitsnap -p 8080
+# Keep the helper container alive so studio.sh can exec into it and the
+# extopenscad binary remains available through the shared Docker volume.
+exec tail -f /dev/null

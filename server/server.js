@@ -16,16 +16,18 @@ const http = require('http')
 const fs = require('fs')
 const path = require('path')
 const url = require('url')
-const { spawn, execSync } = require('child_process')
+const { execSync } = require('child_process')
 const os = require('os')
 
 const PORT = parseInt(process.env.PORT || '4000', 10)
 const WORKSPACE = process.env.WORKSPACE || path.join(process.cwd(), '_workspace')
-const LLM_COMMAND = process.env.LLM_COMMAND || 'claude -p'
 const EXTOPENSCAD = process.env.EXTOPENSCAD || findExtopenscad()
 const ADMESH = process.env.ADMESH || findAdmesh()
 const COMPILE_TIMEOUT = parseInt(process.env.COMPILE_TIMEOUT || '60', 10) * 1000
+// Docker containers use host.docker.internal (set in docker-compose.yml).
+// Standalone/local dev defaults to localhost.
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434'
+const DEBUG_SERVER = process.env.DEBUG_SERVER === '1'
 let OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
 let ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || ''
 
@@ -43,7 +45,9 @@ function loadProviderConfig() {
         model: typeof config.model === 'string' ? config.model : '',
       }
     }
-  } catch {}
+  } catch (e) {
+    console.error('[loadProviderConfig]', e instanceof Error ? e.message : String(e))
+  }
   return {
     provider: process.env.ACTIVE_PROVIDER || 'ollama',
     model: process.env.ACTIVE_MODEL || '',  // Empty = auto-detect first available
@@ -78,7 +82,7 @@ async function autoDetectModel() {
 
     // If configured model exists, keep it
     if (activeConfig.model && modelNames.includes(activeConfig.model)) {
-      console.log(`Using configured model: ${activeConfig.model}`)
+      if (DEBUG_SERVER) console.log(`Using configured model: ${activeConfig.model}`)
       return
     }
 
@@ -97,15 +101,15 @@ async function autoDetectModel() {
       const prev = activeConfig.model
       activeConfig.model = available
       saveProviderConfig(activeConfig)
-      console.log(`Model '${prev || '(none)'}' not found, switched to: ${available}`)
+      if (DEBUG_SERVER) console.log(`Model '${prev || '(none)'}' not found, switched to: ${available}`)
     } else if (activeConfig.model && provider !== 'ollama') {
       const prev = activeConfig.model
       activeConfig.model = ''
       saveProviderConfig(activeConfig)
-      console.log(`Model '${prev}' not found, cleared selection for provider: ${provider}`)
+      if (DEBUG_SERVER) console.log(`Model '${prev}' not found, cleared selection for provider: ${provider}`)
     } else if (!activeConfig.model && provider === 'ollama') {
       activeConfig.model = 'implicitcad-dev'
-      console.log('No models found, defaulting to implicitcad-dev')
+      if (DEBUG_SERVER) console.log('No models found, defaulting to implicitcad-dev')
     }
   } catch {
     if (!activeConfig.model && provider === 'ollama') activeConfig.model = 'implicitcad-dev'
@@ -193,6 +197,7 @@ if (!fs.existsSync(WORKSPACE)) {
 // ── System Prompt ───────────────────────────────────────────────────────────
 
 function loadSystemPrompt() {
+  // Primary: server/ (ships inside Docker image). Fallback: ai_context/ (local dev).
   const paths = [
     path.join(__dirname, 'implicitcad-manual.md'),
     path.join(__dirname, '..', 'ai_context', 'implicitcad-manual.md'),
@@ -512,29 +517,12 @@ function buildMessages(prompt, code, sessionId) {
 
   messages.push({ role: 'user', content: userContent })
 
-  // Debug: log prompt packing for remote diagnosis
-  const totalEstTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0)
-  console.log(`[buildMessages] model=${activeConfig.model} msgs=${messages.length} est_tokens=${totalEstTokens}/${maxContext} max_output=${maxOutput} thread_context=${includeThreadContext ? 'on' : 'off'} thread_prompts=${thread.recentUserPrompts.length} has_summary=${!!thread.summary}`)
+  if (process.env.DEBUG_LLM_STREAM === '1') {
+    const totalEstTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0)
+    console.log(`[buildMessages] model=${activeConfig.model} msgs=${messages.length} est_tokens=${totalEstTokens}/${maxContext} max_output=${maxOutput} thread_context=${includeThreadContext ? 'on' : 'off'} thread_prompts=${thread.recentUserPrompts.length} has_summary=${!!thread.summary}`)
+  }
 
   return messages
-}
-
-// ── Provider: CLI (legacy) ──────────────────────────────────────────────────
-
-function callLLMCli(prompt) {
-  return new Promise((resolve, reject) => {
-    const args = LLM_COMMAND.split(/\s+/)
-    const cmd = args.shift()
-    const proc = spawn(cmd, args, { shell: true, env: { ...process.env }, stdio: ['pipe', 'pipe', 'pipe'] })
-    let stdout = '', stderr = ''
-    proc.stdout.on('data', d => stdout += d)
-    proc.stderr.on('data', d => stderr += d)
-    const timer = setTimeout(() => { proc.kill('SIGTERM'); reject(new Error('LLM timeout')) }, 120000)
-    proc.on('close', code => { clearTimeout(timer); code !== 0 ? reject(new Error(stderr || 'LLM failed')) : resolve(stdout) })
-    proc.on('error', err => { clearTimeout(timer); reject(err) })
-    proc.stdin.write(prompt)
-    proc.stdin.end()
-  })
 }
 
 // ── Provider: Ollama ────────────────────────────────────────────────────────
@@ -577,7 +565,8 @@ async function listOllamaModels() {
     if (!resp.ok) return []
     const data = await resp.json()
     return (data.models || []).map(m => ({ name: m.name, size: m.size, modified: m.modified_at }))
-  } catch {
+  } catch (e) {
+    if (DEBUG_SERVER) console.error('[listOllamaModels]', e instanceof Error ? e.message : String(e))
     return []
   }
 }
@@ -680,7 +669,8 @@ async function listOpenAIModels() {
     )
     openaiModelsCache = { models: chatModels, fetchedAt: now }
     return chatModels
-  } catch {
+  } catch (e) {
+    if (DEBUG_SERVER) console.error('[listOpenAIModels]', e instanceof Error ? e.message : String(e))
     return openaiModelsCache.models
   }
 }
@@ -754,7 +744,8 @@ async function listAnthropicModels() {
     })
     anthropicModelsCache = { models: latestModels, fetchedAt: now }
     return latestModels
-  } catch {
+  } catch (e) {
+    if (DEBUG_SERVER) console.error('[listAnthropicModels]', e instanceof Error ? e.message : String(e))
     return anthropicModelsCache.models
   }
 }
@@ -966,6 +957,8 @@ function compileScad(code, options = {}) {
 // ── HTTP Server ─────────────────────────────────────────────────────────────
 
 const server = http.createServer(async (req, res) => {
+  // Wildcard CORS is intentional: this server runs locally behind Docker/nginx,
+  // not on the public internet. Tightening breaks the Vite dev proxy workflow.
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
@@ -1042,21 +1035,7 @@ const server = http.createServer(async (req, res) => {
       // Build messages first, THEN update thread (avoids duplicating current prompt)
       const messages = buildMessages(body.prompt, body.code, body.sessionId)
       updateThread(body.sessionId, body.prompt.trim())
-      let raw
-
-      if (activeConfig.provider === 'cli') {
-        // Legacy CLI path — flatten messages to single string
-        let fullPrompt = ''
-        for (const m of messages) {
-          if (m.role === 'system') fullPrompt += m.content + '\n\n'
-          else if (m.role === 'user') fullPrompt += `User: ${m.content}\n\n`
-          else fullPrompt += `Assistant: ${m.content}\n\n`
-        }
-        fullPrompt += 'Generate the OpenSCAD code:'
-        raw = await callLLMCli(fullPrompt)
-      } else {
-        raw = await routeInference(messages, false)
-      }
+      const raw = await routeInference(messages, false)
 
       const code = extractCode(raw, body.code, body.prompt)
       if (!code) {
@@ -1103,24 +1082,6 @@ const server = http.createServer(async (req, res) => {
       // Handle client disconnect
       let aborted = false
       req.on('close', () => { aborted = true })
-
-      if (activeConfig.provider === 'cli') {
-        // CLI fallback: non-streaming, send as single SSE event
-        // Use buildMessages for budgeting, then flatten
-        let fullPrompt = ''
-        for (const m of messages) {
-          if (m.role === 'system') fullPrompt += m.content + '\n\n'
-          else if (m.role === 'user') fullPrompt += `User: ${m.content}\n\n`
-          else fullPrompt += `Assistant: ${m.content}\n\n`
-        }
-        fullPrompt += 'Generate the OpenSCAD code:'
-        const raw = await callLLMCli(fullPrompt)
-        const code = extractCode(raw, body.code, body.prompt)
-        res.write(`data: ${JSON.stringify({ token: raw, done: false })}\n\n`)
-        res.write(`data: ${JSON.stringify({ token: '', done: true, code })}\n\n`)
-        res.end()
-        return
-      }
 
       const providerStream = await routeInference(messages, true)
       let accumulated = ''
@@ -1200,9 +1161,10 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/providers/select' && req.method === 'POST') {
     try {
       const body = await parseJsonBody(req)
-      if (!body.provider) {
+      const VALID_PROVIDERS = ['ollama', 'openai', 'anthropic']
+      if (!body.provider || !VALID_PROVIDERS.includes(body.provider)) {
         res.writeHead(400, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: 'provider required' }))
+        res.end(JSON.stringify({ error: `Invalid provider. Must be one of: ${VALID_PROVIDERS.join(', ')}` }))
         return
       }
       activeConfig = {

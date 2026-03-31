@@ -48,7 +48,7 @@ export function StatusBar() {
       <div className="flex items-center gap-2">
         {backendMode && (
           <span className="px-1.5 py-0.5 bg-bg-raised rounded text-text-secondary">
-            {backendMode === 'implicitsnap' ? 'implicitsnap' : 'Docker'}
+            Docker
           </span>
         )}
       </div>

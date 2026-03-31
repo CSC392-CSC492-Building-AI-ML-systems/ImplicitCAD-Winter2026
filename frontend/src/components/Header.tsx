@@ -74,9 +74,7 @@ export function Header({ onRender, onOpenFolder }: HeaderProps) {
 
   const statusText = isRendering
     ? 'Rendering...'
-    : backendMode === 'implicitsnap'
-      ? 'implicitsnap'
-      : backendMode === 'docker'
+    : backendMode === 'docker'
         ? 'Docker backend'
         : 'Connecting...'
 

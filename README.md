@@ -42,12 +42,13 @@ cp .env.example .env          # Review and adjust if needed
 | Stop all services | Shuts down Docker services and Ollama |
 | Full rebuild | Rebuilds all containers from scratch |
 
-Legacy wrapper scripts (`install.sh`, `up.sh`) still work — they delegate to `studio.sh`.
+`./studio.sh` is the only supported user entry point.
 
 ### Docker Commands
 
 ```bash
 docker compose up -d --build  # Build and start all services
+docker compose port frontend 3000  # Find the frontend URL (dynamic host port)
 docker compose down           # Stop
 docker compose logs -f        # View logs
 docker compose build --no-cache   # Full rebuild
@@ -67,11 +68,10 @@ npm install --legacy-peer-deps
 npm run dev
 ```
 
-Vite starts at **http://localhost:3000** with hot module replacement. API calls are proxied to the Docker backends automatically (`/api` -> `localhost:14000`, `/render` -> `localhost:8080`). Override proxy targets in `.env`:
+Vite starts at **http://localhost:3000** with hot module replacement. API calls are proxied to the Docker backend automatically (`/api` -> `localhost:14000`). Override the proxy target in `.env`:
 
 ```bash
 VITE_API_URL=http://localhost:14000
-VITE_RENDER_URL=http://localhost:8080
 ```
 
 ### Running everything in Docker (production-like)
@@ -110,23 +110,23 @@ API server starts at **http://localhost:4000**. See `.env.example` for all confi
         http://localhost:3000 (dev) or dynamic port (Docker)
                     |
              [ Vite / nginx ]
-               /         \
-        /api/*            /render/*
-          |                   |
-   [ Node.js ]         [ implicitsnap ]
-   port 4000            port 8080
-   POST /api/compile    jsTHREE format
-   POST /api/chat       (real-time preview)
-   GET  /api/health
+                    |
+                 /api/*
+                    |
+               [ Node.js ]
+                port 4000
+      POST /api/compile
+      POST /api/chat/stream
+      GET  /api/health
 ```
 
 | Container | Role | Port |
 |-----------|------|------|
-| `implicitcad-engine` | ImplicitCAD: `implicitsnap` + `extopenscad` | host `8080` -> container `8080` |
+| `implicitcad-engine` | ImplicitCAD helper container: shared `extopenscad` binary volume, exec/test target | not published |
 | `implicitcad-server` | Node.js API: compile, AI chat, admesh validation | host `SERVER_HOST_PORT` (default `14000`) -> container `4000` |
 | `implicitcad-frontend` | React app via nginx (production only) | dynamic host port -> container `3000` |
 
-The server container uses a Debian base image (matching the engine) so the shared `extopenscad` binary runs correctly. The binary is shared via a Docker named volume mounted at `/opt/implicitcad-bin`.
+The server container uses a Debian base image (matching the engine) so the shared `extopenscad` binary runs correctly. The binary is shared via a Docker named volume mounted at `/opt/implicitcad-bin`, and the helper engine container stays alive for `studio.sh exec/test/compile` workflows.
 
 ## Features
 

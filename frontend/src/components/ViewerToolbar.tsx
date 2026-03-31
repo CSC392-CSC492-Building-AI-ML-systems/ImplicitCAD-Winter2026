@@ -5,6 +5,7 @@ import { useEditorStore } from '../stores/editorStore'
 import { useFileTreeStore } from '../stores/fileTreeStore'
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
 import { Mesh as ThreeMesh, MeshBasicMaterial } from 'three'
+import { downloadBlob } from '../lib/download'
 
 export function ViewerToolbar({ onRerender }: { onRerender?: () => void }) {
   const wireframe = useViewerStore((s) => s.wireframe)
@@ -302,13 +303,4 @@ function ActionBtn({ icon, title, active, onClick }: { icon: React.ReactNode; ti
       {icon}
     </button>
   )
-}
-
-export function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
 }

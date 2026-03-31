@@ -184,7 +184,7 @@ export function ChatPanel() {
           selectProvider(activeProvider, models[0])
         }
       })
-      .catch((e) => { console.warn('Model fetch failed:', e); setAvailableModels([]) })
+      .catch((e) => { useEditorStore.getState().log(`Model fetch failed: ${e instanceof Error ? e.message : e}`, 'warning'); setAvailableModels([]) })
   }, [activeProvider, openaiKeySet, anthropicKeySet]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleProviderChange = (newProvider: string) => {
@@ -362,7 +362,7 @@ export function ChatPanel() {
                   // Only the final extracted code (data.code on done) is shown to the user.
                 }
               } catch (parseErr) {
-                console.warn('Stream JSON parse error:', parseErr)
+                useEditorStore.getState().log('Stream parse error — skipped malformed event', 'warning')
               }
             }
           }

@@ -5,7 +5,7 @@ import { useLayoutStore } from '../stores/layoutStore'
 import { useChatStore } from '../stores/chatStore'
 import { useFileTreeStore } from '../stores/fileTreeStore'
 import { EXAMPLES } from '../lib/examples'
-import { downloadBlob } from './ViewerToolbar'
+import { downloadBlob } from '../lib/download'
 
 interface Command {
   id: string

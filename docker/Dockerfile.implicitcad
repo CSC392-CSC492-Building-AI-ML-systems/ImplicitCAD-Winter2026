@@ -1,5 +1,6 @@
-# Multi-stage build for ImplicitCAD
-# Produces extopenscad + implicitsnap binaries
+# Multi-stage build for the ImplicitCAD helper container.
+# Produces the extopenscad binary and keeps a matching runtime image around
+# for exec/test workflows and the shared Docker volume.
 
 # ── Stage 1: Build from source ────────────────────────────────────────────────
 FROM --platform=$BUILDPLATFORM haskell:9.6.6-slim AS builder
@@ -12,7 +13,8 @@ RUN apt-get update && \
 WORKDIR /build
 RUN git clone --depth 1 https://github.com/Haskell-Things/ImplicitCAD.git .
 
-# Enable implicitsnap flag
+# Enable implicitsnap flag in the upstream build so the runtime image stays
+# compatible with the current ImplicitCAD source build configuration.
 RUN echo 'flags: +implicitsnap' >> cabal.project.local
 
 RUN cabal update && \
@@ -37,5 +39,4 @@ WORKDIR /app
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-EXPOSE 8080
 CMD ["/app/entrypoint.sh"]

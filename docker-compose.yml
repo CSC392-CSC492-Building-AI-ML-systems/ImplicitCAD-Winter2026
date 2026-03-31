@@ -1,13 +1,11 @@
 services:
-  # ImplicitCAD engine: runs implicitsnap (port 8080) for jsTHREE rendering
-  # Also has extopenscad binary for STL compilation
+  # ImplicitCAD engine: provides the shared extopenscad binary volume and
+  # a persistent helper container for exec/test workflows.
   implicitcad:
     build:
       context: ./docker
       dockerfile: Dockerfile.implicitcad
     container_name: implicitcad-engine
-    ports:
-      - "8080:8080"
     volumes:
       - implicitcad-bin:/opt/implicitcad-bin
     restart: unless-stopped
@@ -28,7 +26,6 @@ services:
       - PORT=4000
       - EXTOPENSCAD=/opt/implicitcad-bin/extopenscad
       - WORKSPACE=/workspace
-      - LLM_COMMAND=${LLM_COMMAND:-echo "LLM not configured"}
       - COMPILE_TIMEOUT=${COMPILE_TIMEOUT:-60}
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}

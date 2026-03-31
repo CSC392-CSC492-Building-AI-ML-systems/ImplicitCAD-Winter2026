@@ -10,7 +10,6 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       proxy: {
         '/api': env.VITE_API_URL || 'http://localhost:14000',
-        '/render': env.VITE_RENDER_URL || 'http://localhost:8080',
       },
     },
     build: {
