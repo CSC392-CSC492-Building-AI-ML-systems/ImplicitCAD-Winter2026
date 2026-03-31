@@ -8,7 +8,6 @@ This project fine-tunes an LLM to turn natural-language 3D editing requests into
 |---|---|
 | **Training data** | 1,746 examples across two stages (1,571 OpenSCAD-converted + 139 hand-curated ImplicitCAD) |
 | **Compilation success** | **80%** (24/30) vs 53% base model — whitepaper evaluation |
-| **Geometry matched intent** | **73%** (22/30) — whitepaper evaluation |
 | **Inference speed** | **2.26s** vs 44.12s per case (19.5x faster) — local benchmark |
 | **Training cost** | Under 5 minutes on a single A100, LoRA adapter ~300 MB |
 
@@ -48,14 +47,22 @@ The model takes a natural-language editing instruction plus existing code, and o
 
 ## Model
 
-### Trained Model
+### Available Models
+
+| Model | Size | Download | RAM Required | GPU | Best For |
+|-------|------|----------|-------------|-----|----------|
+| **Qwen3.5-9B** (recommended) | ~5 GB | [HuggingFace](https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct) | 8 GB+ | Optional | Main evaluated model from the whitepaper. Best balance of quality and hardware requirements. |
+| **Qwen3.5-27B** | ~15.4 GB | Via `./studio.sh` -> "Add 27B" or [HuggingFace](https://huggingface.co/ziaoliu/Qwen3.5-27B-OpenSCAD-Instruct) | 32 GB+ | Recommended (16 GB+ VRAM) | Higher quality output, handles complex geometry better. Requires a powerful machine. |
+| **Qwen3.5-0.8B** (test) | ~1 GB | Via `./studio.sh` → "Add 0.8B" | 4 GB | Not needed | Lightweight test model for verifying setup. Not fine-tuned — not representative of project quality. |
 
 | Artifact | Link |
 |----------|------|
-| Merged GGUF (Q4_K_M, ~5 GB) | [huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct](https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct) |
-| LoRA Adapter (~300 MB) | [huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-LoRA](https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-LoRA) |
+| 9B Merged GGUF (Q4_K_M) | [huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct](https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct) |
+| 9B LoRA Adapter (~300 MB) | [huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-LoRA](https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-LoRA) |
+| 27B Merged GGUF (Q4_K_M) | [huggingface.co/ziaoliu/Qwen3.5-27B-OpenSCAD-Instruct](https://huggingface.co/ziaoliu/Qwen3.5-27B-OpenSCAD-Instruct) |
+| 27B LoRA Adapter | [huggingface.co/Max2475/qwen3.5-27b-openscad-instruct-lora](https://huggingface.co/Max2475/qwen3.5-27b-openscad-instruct-lora) |
 
-> The 9B model is the main research artifact. The `0.8B` option in `./studio.sh` is a lightweight test model, not the evaluated model from the whitepaper.
+> The 9B model is the primary research artifact and the one evaluated in the whitepaper. The 27B model was also trained and performs better on complex prompts, but requires significantly more hardware. The 0.8B option is only for verifying that the local pipeline works.
 
 ### Problem
 
@@ -111,7 +118,6 @@ The resulting LoRA adapter is ~300 MB. After merging, the model was exported to 
 | Metric | Base Model | Fine-Tuned | Improvement |
 |--------|-----------|------------|-------------|
 | **Compilation success** | 53% (16/30) | **80%** (24/30) | +27pp |
-| **Geometry matched intent** | — | **73%** (22/30) | — |
 
 **Additional local benchmark** (`test_files/lmstudio_scad_benchmark_results*.txt`):
 
@@ -174,7 +180,7 @@ In the TUI:
 
 1. run `First-time setup`
 2. run `Start Studio`
-3. optionally run `Add 9B (production)` to download the main fine-tuned model
+3. optionally run `Add 9B (production)` or `Add 27B (advanced)` to download a fine-tuned model
 
 > The first full Docker build can take about `15-20 minutes` because ImplicitCAD is compiled from Haskell source.
 
@@ -194,8 +200,9 @@ In the TUI:
 |-------------|---------|
 | First-time setup | Verifies Docker, installs or checks Ollama, prepares the environment |
 | Start Studio | Starts the Docker services and opens the app |
-| Add 0.8B (test) | Downloads a lightweight local test model |
-| Add 9B (production) | Downloads the main fine-tuned model |
+| Add 0.8B (test) | Downloads a lightweight test model (~1 GB download) |
+| Add 9B (production) | Downloads the main fine-tuned model (~5 GB download, needs 8 GB+ RAM) |
+| Add 27B (advanced) | Downloads the largest fine-tuned model (~15.4 GB download, needs 32 GB+ RAM) |
 | View status | Shows service health, Ollama state, and model readiness |
 | Advanced tools | Shell access, smoke tests, compile helpers, and logs |
 | Stop all services | Stops Docker services and Ollama |

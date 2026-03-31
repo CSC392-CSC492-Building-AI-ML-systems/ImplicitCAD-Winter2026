@@ -210,6 +210,7 @@ show_header() {
   echo -e "  ${DIM}Docker services use ~200MB RAM + ~2GB disk (images)${D}"
   echo -e "  ${DIM}0.8B test model: ~1GB disk, ~1GB RAM    (any machine)${D}"
   echo -e "  ${DIM}9B  production:  ~6GB disk, ~6GB RAM    (8GB+ total recommended)${D}"
+  echo -e "  ${DIM}27B advanced:   ~16GB disk, ~32GB RAM   (powerful machine recommended)${D}"
   # Warnings based on actual system
   if [ "$RAM_GB" -lt 4 ] 2>/dev/null; then
     echo -e "  ${R}⚠ ${RAM_GB}GB RAM is below minimum (4GB). Docker + 0.8B model may not fit.${D}"
@@ -496,7 +497,7 @@ show_model_status() {
 
   echo ""
   echo -e "  ${C}Installed Models:${D}"
-  for name in implicitcad-dev implicitcad-9b; do
+  for name in implicitcad-dev implicitcad-9b implicitcad-27b; do
     if echo "$models" | grep -q "$name"; then
       echo -e "    ${G}✓${D} $name"
     else
@@ -629,7 +630,7 @@ setup_first_time() {
   info "Setup complete!"
   echo ""
   echo -e "  ${W}Next steps:${D}"
-  echo -e "  1. Download a model — pick ${C}Add 9B${D} (recommended) or ${C}Add 0.8B${D} (test) from the menu"
+  echo -e "  1. Download a model — pick ${C}Add 9B${D} (recommended), ${C}Add 27B${D} (advanced), or ${C}Add 0.8B${D} (test)"
   echo -e "  2. Start Studio — launches Docker services and opens browser"
 }
 
@@ -715,6 +716,53 @@ setup_9b() {
   echo -e "  1. Start Studio from the menu"
   echo -e "  2. In the AI Chat panel, select ${C}implicitcad-9b${D}"
   echo -e "  3. Start chatting — the fine-tuned 9B model generates OpenSCAD code"
+}
+
+# Setup advanced 27B model (merged — pulled directly from HuggingFace)
+setup_27b() {
+  echo ""
+  echo -e "  ${W}27B Advanced Model Setup${D}"
+  echo -e "  ${DIM}Downloads the fine-tuned 27B model (~15.4GB) and creates implicitcad-27b.${D}"
+  echo -e "  ${DIM}Recommended: 32GB+ RAM. This is a large download and may take a while.${D}"
+  echo ""
+
+  ensure_ollama_running || return
+
+  echo -e "  ${C}Step 1/2:${D} Pulling model from HuggingFace (~15.4GB)..."
+  echo -e "  ${DIM}Large download — if it times out, it will resume where it left off on retry.${D}"
+  if has_ollama_model "hf.co/ziaoliu/Qwen3.5-27B-OpenSCAD-Instruct"; then
+    info "Model already pulled — skipping"
+  else
+    local attempt
+    for attempt in 1 2 3; do
+      if pull_model "hf.co/ziaoliu/Qwen3.5-27B-OpenSCAD-Instruct"; then
+        break
+      fi
+      if [ "$attempt" -lt 3 ]; then
+        warn "Download interrupted (attempt $attempt/3). Retrying — Ollama resumes partial downloads..."
+        sleep 2
+      else
+        fail "Failed after 3 attempts. Check your internet connection and try again."
+        echo -e "    ${DIM}You can also try manually: ${C}ollama pull hf.co/ziaoliu/Qwen3.5-27B-OpenSCAD-Instruct${D}"
+        return
+      fi
+    done
+  fi
+
+  echo ""
+  echo -e "  ${C}Step 2/2:${D} Creating app model (implicitcad-27b)..."
+  if has_ollama_model "implicitcad-27b"; then
+    warn "implicitcad-27b already exists — recreating"
+  fi
+  create_model "implicitcad-27b" "./ollama/Modelfile.27b"
+
+  echo ""
+  info "27B model ready!"
+  echo ""
+  echo -e "  ${W}How to use it:${D}"
+  echo -e "  1. Start Studio from the menu"
+  echo -e "  2. In the AI Chat panel, select ${C}implicitcad-27b${D}"
+  echo -e "  3. Start chatting — this is the largest local fine-tuned model"
 }
 
 # ── Advanced Tool Functions ─────────────────────────────────────────────────
@@ -1024,6 +1072,9 @@ if [ $# -gt 0 ]; then
     --setup-9b)
       setup_9b
       ;;
+    --setup-27b)
+      setup_27b
+      ;;
     --stop)
       stop_all
       ;;
@@ -1057,7 +1108,7 @@ if [ $# -gt 0 ]; then
       do_logs "$@"
       ;;
     *)
-      echo "Usage: ./studio.sh [--install|--start|--setup-9b|--setup-0.8b|--stop|--status]"
+      echo "Usage: ./studio.sh [--install|--start|--setup-9b|--setup-27b|--setup-0.8b|--stop|--status]"
       echo "       ./studio.sh test                     Run smoke tests"
       echo "       ./studio.sh compile <file.scad>      Compile a .scad file to STL"
       echo "       ./studio.sh run <file.scad>          Compile and show info"
@@ -1077,6 +1128,7 @@ MENU_LABELS=(
   "Start Studio"
   "Add 0.8B (test)"
   "Add 9B (production)"
+  "Add 27B (advanced)"
   "View status"
   "Advanced tools"
   "Stop all services"
@@ -1088,6 +1140,7 @@ MENU_SECTIONS=(
   "Setup"
   "Launch"
   "Download Models"
+  ""
   ""
   "Manage"
   ""
@@ -1155,42 +1208,53 @@ build_menu_state() {
     MENU_DISABLED[3]=""
   fi
 
-  # 4: View status — always available
-  MENU_DESCS[4]="Show Docker services, Ollama, and installed models"
-  MENU_TAGS[4]=""
-  MENU_DISABLED[4]=""
-
-  # 5: Advanced tools — needs Docker
-  if [ -n "$need_docker" ]; then
-    MENU_DESCS[5]="Shell into containers, run tests, compile files"
-    MENU_TAGS[5]="$need_docker"
-    MENU_DISABLED[5]="1"
+  # 4: Add 27B — needs Ollama
+  if ! $OLLAMA_OK; then
+    MENU_DESCS[4]="Largest fine-tuned model (~15.4GB, 32GB+ RAM)"
+    MENU_TAGS[4]="$need_ollama"
+    MENU_DISABLED[4]="1"
   else
-    MENU_DESCS[5]="Shell into containers, run tests, compile files"
-    MENU_TAGS[5]=""
-    MENU_DISABLED[5]=""
+    MENU_DESCS[4]="Largest fine-tuned model (~15.4GB, 32GB+ RAM)"
+    MENU_TAGS[4]="${Y}advanced${D}"
+    MENU_DISABLED[4]=""
   fi
 
-  # 6: Stop all — always available
-  MENU_DESCS[6]="Shut down Docker services and Ollama"
-  MENU_TAGS[6]=""
-  MENU_DISABLED[6]=""
+  # 5: View status — always available
+  MENU_DESCS[5]="Show Docker services, Ollama, and installed models"
+  MENU_TAGS[5]=""
+  MENU_DISABLED[5]=""
 
-  # 7: Full rebuild — needs Docker
+  # 6: Advanced tools — needs Docker
   if [ -n "$need_docker" ]; then
-    MENU_DESCS[7]="Rebuild all containers from scratch (slow)"
-    MENU_TAGS[7]="$need_docker"
-    MENU_DISABLED[7]="1"
+    MENU_DESCS[6]="Shell into containers, run tests, compile files"
+    MENU_TAGS[6]="$need_docker"
+    MENU_DISABLED[6]="1"
   else
-    MENU_DESCS[7]="Rebuild all containers from scratch (slow)"
-    MENU_TAGS[7]=""
-    MENU_DISABLED[7]=""
+    MENU_DESCS[6]="Shell into containers, run tests, compile files"
+    MENU_TAGS[6]=""
+    MENU_DISABLED[6]=""
   fi
 
-  # 8: Quit — always available
-  MENU_DESCS[8]=""
-  MENU_TAGS[8]=""
-  MENU_DISABLED[8]=""
+  # 7: Stop all — always available
+  MENU_DESCS[7]="Shut down Docker services and Ollama"
+  MENU_TAGS[7]=""
+  MENU_DISABLED[7]=""
+
+  # 8: Full rebuild — needs Docker
+  if [ -n "$need_docker" ]; then
+    MENU_DESCS[8]="Rebuild all containers from scratch (slow)"
+    MENU_TAGS[8]="$need_docker"
+    MENU_DISABLED[8]="1"
+  else
+    MENU_DESCS[8]="Rebuild all containers from scratch (slow)"
+    MENU_TAGS[8]=""
+    MENU_DISABLED[8]=""
+  fi
+
+  # 9: Quit — always available
+  MENU_DESCS[9]=""
+  MENU_TAGS[9]=""
+  MENU_DISABLED[9]=""
 }
 
 # Row offsets (static — computed once)
@@ -1304,11 +1368,12 @@ run_selection() {
     1) ensure_ollama_running; start_studio ;;
     2) setup_0_8b ;;
     3) setup_9b ;;
-    4) show_service_status; show_model_status ;;
-    5) advanced_tools_menu ;;
-    6) stop_all ;;
-    7) full_rebuild ;;
-    8) echo -e "  ${DIM}Goodbye.${D}"; echo ""; exit 0 ;;
+    4) setup_27b ;;
+    5) show_service_status; show_model_status ;;
+    6) advanced_tools_menu ;;
+    7) stop_all ;;
+    8) full_rebuild ;;
+    9) echo -e "  ${DIM}Goodbye.${D}"; echo ""; exit 0 ;;
   esac
   echo ""
   read -p "  Press Enter to continue..." _
