@@ -1,202 +1,301 @@
-# ImplicitCAD Studio
+# Lowering Barriers to 3D Design: LLM-Assisted ImplicitCAD
 
-A web-based IDE for [ImplicitCAD](https://github.com/Haskell-Things/ImplicitCAD) — write OpenSCAD code, get instant 3D previews, and generate code with AI.
+This repository is primarily a CSC398 research project on fine-tuning a large language model for ImplicitCAD-compatible SCAD code generation. The browser-based ImplicitCAD Studio app in this repo is the demonstration environment used to run, inspect, and evaluate that model in an end-to-end workflow.
 
-## AI Model
+The project combines:
 
-This project uses a fine-tuned Qwen3.5 9B model for OpenSCAD code generation, hosted on Hugging Face:
+- a fine-tuned `Qwen3.5-9B` model for code generation
+- a small curated dataset of ImplicitCAD editing tasks
+- a Dockerized ImplicitCAD toolchain for reproducible compilation
+- a browser IDE for editing, previewing, and iterating on generated geometry
 
-  https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct
+## Overview
 
-> Note: Model weights are hosted on Hugging Face due to GitHub size limits. Run `./studio.sh` and select "Add 9B" to download.
+Code-based 3D modeling tools such as OpenSCAD and ImplicitCAD are precise and reproducible, but they are difficult for new users because geometric ideas must be translated into compilable programs. This project explores whether a domain-tuned LLM can lower that barrier by turning natural-language editing requests into working SCAD code, then pairing the model with compilation, mesh validation, and an interactive studio interface.
 
-## Quick Start (Docker)
+The main contribution of the project is the model-training and evaluation pipeline. ImplicitCAD Studio is the integrated demo environment built around that model.
+
+Model weights are hosted separately on Hugging Face:
+
+`https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct`
+
+> The 9B model is the main research artifact. The smaller `0.8B` option exposed by `./studio.sh` is a lightweight local test model, not the primary evaluated model from the whitepaper.
+
+## Research Summary
+
+### Problem
+
+General-purpose LLMs can often produce code that looks plausible, but geometric code generation has an extra failure mode: code may compile while still producing the wrong shape. ImplicitCAD also has a smaller ecosystem than mainstream languages, which means less documentation, less training data, and fewer benchmark resources.
+
+This project focuses on that gap: ImplicitCAD-specific instruction following, verified compilation, and geometry-aware evaluation.
+
+### Dataset Construction
+
+The fine-tuning dataset contains `139` curated examples. Each example includes:
+
+- a natural-language instruction
+- an existing SCAD program
+- the expected fully updated SCAD program after applying the requested change
+
+The dataset was built from the project's internal test cases and was designed to cover common geometric editing operations such as:
+
+- translation
+- union
+- difference
+- object insertion
+
+All target programs were manually checked to ensure they compiled correctly with the ImplicitCAD toolchain before being used for training.
+
+### Training Procedure
+
+Each example was converted into the chat format expected by `Qwen3.5`, where:
+
+- the `user` message contains the instruction plus the initial code
+- the `assistant` message contains the expected full updated program
+
+Training used response-only supervision so that only assistant tokens contributed to the loss.
+
+The fine-tuning setup from the whitepaper:
+
+- Base model: `Qwen3.5-9B`
+- Method: `LoRA`
+- LoRA rank: `r=16`
+- LoRA scaling: `alpha=32`
+- LoRA dropout: `0`
+- Sequence length: `8k`
+- Optimizer: `AdamW 8-bit`
+- Effective batch size: `8`
+- Learning rate: `5e-5`
+- Warmup steps: `5`
+- Weight decay: `0.001`
+- Schedule: `linear`
+- Epochs: `2`
+- Total update steps: `36`
+- Hardware: single `A100 40 GB`
+- Runtime: under `5 minutes` in Google Colab
+
+The resulting LoRA adapter checkpoint is approximately `300 MB`.
+
+### Export and Local Deployment
+
+After training, the adapter was merged and exported to `GGUF` using Unsloth's GGUF export pipeline. The merged model was quantized to `Q4_K_M`, producing a final artifact of roughly `5 GB`.
+
+This export choice makes the model practical to run locally through tools such as:
+
+- `Ollama`
+- `llama.cpp`
+- `LM Studio`
+
+In this repository, the local AI workflow is built around `Ollama`.
+
+### Evaluation Results
+
+The whitepaper evaluates the fine-tuned model on a held-out set of `30` unseen prompts.
+
+| Metric | Result |
+|--------|--------|
+| Compilation rate | `24/30` = `80%` |
+| Geometrically correct outputs | `22/30` |
+| Overall success rate on test set | about `73%` |
+| Untuned base-model compilation rate | `16/30` |
+
+These results show a clear improvement over the untuned base model, especially in compilation reliability and geometric alignment.
+
+### Scope and Limitations
+
+This system is intended for:
+
+- rapid prototyping
+- research
+- education
+- iterative design assistance
+
+It is not intended for:
+
+- manufacturing guarantees
+- safety-critical use
+- dimensional certification
+
+Automated validation and mesh checks improve robustness, but they do not guarantee that every generated model perfectly matches user intent or real-world engineering constraints.
+
+## ImplicitCAD Studio
+
+### What It Is
+
+ImplicitCAD Studio is the demo application built around the training output above. It provides an end-to-end environment where a user can:
+
+- edit SCAD code
+- ask the model to modify or generate code
+- compile the result with ImplicitCAD
+- inspect the resulting STL in a live 3D viewer
+
+The Studio is important because the model is most useful inside an interactive loop rather than as an isolated artifact.
+
+### Key Features
+
+- Monaco-based code editor with OpenSCAD-style syntax highlighting
+- Three.js 3D viewer with orbit controls, camera presets, wireframe, and grid planes
+- AI assistant panel with local Ollama support and optional OpenAI / Anthropic backends
+- File explorer for local workspace editing
+- STL export and viewport screenshots
+- Output console, toast errors, and compile diagnostics
+
+### Quick Start
 
 ```bash
 git clone https://github.com/CSC392-CSC492-Building-AI-ML-systems/ImplicitCAD-Winter2026.git
 cd ImplicitCAD-Winter2026
-cp .env.example .env          # Review and adjust if needed
-./studio.sh                   # Interactive TUI — select "First-time setup"
+cp .env.example .env
+./studio.sh
 ```
 
-> First build takes ~15-20 min (compiling ImplicitCAD from Haskell source). Subsequent starts take seconds.
+In the TUI:
+
+1. run `First-time setup`
+2. run `Start Studio`
+3. optionally run `Add 9B (production)` to download the main fine-tuned model
+
+> The first full Docker build can take about `15-20 minutes` because ImplicitCAD is compiled from Haskell source.
 
 ### System Requirements
 
-- **Docker** 20+ with Docker Compose v2
-- **RAM**: 4 GB minimum (8 GB recommended for AI model inference)
-- **Disk**: ~10 GB free for Docker images (first build)
-- **Node.js** 18+ (only for local frontend development)
+- Docker `20+` with Docker Compose v2
+- `4 GB` RAM minimum
+- `8 GB+` RAM recommended for local AI inference
+- about `10 GB` free disk space for Docker images and model assets
+- Node.js `18+` only if you want to run the frontend dev server locally
 
-### Using the TUI
+### TUI Workflow
 
-`./studio.sh` is the single entry point for all operations:
+`./studio.sh` is the single supported user entry point.
 
-| Menu Option | What it does |
-|-------------|-------------|
-| First-time setup | Installs Ollama, verifies Docker |
-| Start Studio | Launches Docker services, starts Ollama, opens browser |
-| Add 0.8B / 9B | Downloads AI models for code generation |
-| View status | Shows Docker services, health checks, Ollama status |
-| Advanced tools | Shell into containers, run smoke tests, compile files, tail logs |
-| Stop all services | Shuts down Docker services and Ollama |
+| Menu Option | Purpose |
+|-------------|---------|
+| First-time setup | Verifies Docker, installs or checks Ollama, prepares the environment |
+| Start Studio | Starts the Docker services and opens the app |
+| Add 0.8B (test) | Downloads a lightweight local test model |
+| Add 9B (production) | Downloads the main fine-tuned model |
+| View status | Shows service health, Ollama state, and model readiness |
+| Advanced tools | Shell access, smoke tests, compile helpers, and logs |
+| Stop all services | Stops Docker services and Ollama |
 | Full rebuild | Rebuilds all containers from scratch |
-
-`./studio.sh` is the only supported user entry point.
 
 ### Docker Commands
 
 ```bash
-docker compose up -d --build  # Build and start all services
-docker compose port frontend 3000  # Find the frontend URL (dynamic host port)
-docker compose down           # Stop
-docker compose logs -f        # View logs
-docker compose build --no-cache   # Full rebuild
+docker compose up -d --build
+docker compose port frontend 3000
+docker compose down
+docker compose logs -f
+docker compose build --no-cache
 ```
 
-## Development (recommended workflow)
+Use `docker compose port frontend 3000` or `./studio.sh --status` to find the actual frontend URL when running the production Docker setup.
 
-Run the Docker backends and the Vite dev server locally for instant hot-reload:
+### Development Workflow
+
+For frontend development with hot reload, run the backends in Docker and the frontend with Vite:
 
 ```bash
-# Start only the backend containers
 docker compose up -d implicitcad server
 
-# Run the frontend dev server
 cd frontend
 npm install --legacy-peer-deps
 npm run dev
 ```
 
-Vite starts at **http://localhost:3000** with hot module replacement. API calls are proxied to the Docker backend automatically (`/api` -> `localhost:14000`). Override the proxy target in `.env`:
+The Vite app starts at `http://localhost:3000` and proxies `/api` requests to the Docker server container.
+
+If you want the production-like setup instead, run:
 
 ```bash
-VITE_API_URL=http://localhost:14000
+./studio.sh
 ```
 
-### Running everything in Docker (production-like)
+and choose `Start Studio`.
 
-```bash
-./studio.sh    # Select "Start Studio"
-```
-
-This builds the frontend into a static nginx image. Use when testing the production setup or deploying.
-
-### Run the Server standalone (no Docker)
-
-```bash
-cd server
-npm install
-node server.js
-```
-
-API server starts at **http://localhost:4000**. See `.env.example` for all configurable environment variables.
-
-### Compile .scad files via CLI
-
-```bash
-# Via studio.sh (requires Docker)
-./studio.sh compile mymodel.scad -o mymodel.stl
-
-# Or shell into a container for interactive use
-./studio.sh exec server
-# Inside: "$EXTOPENSCAD" -o output.stl input.scad
-# Inside: admesh output.stl
-```
-
-## Architecture
+### Architecture
 
 ```
-        http://localhost:3000 (dev) or dynamic port (Docker)
-                    |
-             [ Vite / nginx ]
-                    |
-                 /api/*
-                    |
-               [ Node.js ]
-                port 4000
-      POST /api/compile
-      POST /api/chat/stream
-      GET  /api/health
+        browser
+           |
+   Vite dev server or nginx
+           |
+         /api/*
+           |
+      Node.js server
+           |
+   extopenscad + admesh
+           |
+      STL -> Three.js viewer
 ```
 
 | Container | Role | Port |
 |-----------|------|------|
-| `implicitcad-engine` | ImplicitCAD helper container: shared `extopenscad` binary volume, exec/test target | not published |
-| `implicitcad-server` | Node.js API: compile, AI chat, admesh validation | host `SERVER_HOST_PORT` (default `14000`) -> container `4000` |
-| `implicitcad-frontend` | React app via nginx (production only) | dynamic host port -> container `3000` |
+| `implicitcad-engine` | Helper container that provides the shared `extopenscad` binary volume and an exec/test target | not published |
+| `implicitcad-server` | API server for compile, health, provider management, and AI chat | host `SERVER_HOST_PORT` (default `14000`) -> container `4000` |
+| `implicitcad-frontend` | React app served by nginx in production Docker mode | dynamic host port -> container `3000` |
 
-The server container uses a Debian base image (matching the engine) so the shared `extopenscad` binary runs correctly. The binary is shared via a Docker named volume mounted at `/opt/implicitcad-bin`, and the helper engine container stays alive for `studio.sh exec/test/compile` workflows.
+The frontend renders STL output with `Three.js`. The older direct `implicitsnap` render path is no longer part of the active UI pipeline.
 
-## Features
+### AI Providers
 
-- **Code Editor** — Monaco with OpenSCAD syntax highlighting and auto-render
-- **3D Viewport** — Three.js viewer with orbit controls, wireframe, camera presets, per-axis grid planes
-- **AI Assistant** — Generate ImplicitCAD code from natural language (configurable LLM backend)
-- **File Explorer** — Browser File System Access API for local folder editing
-- **Export** — Download STL, viewport screenshots
-- **Error Notifications** — Toast alerts and Output console with unread error badge
+The Studio supports multiple model backends in the chat panel:
 
-### Viewport Controls
+| Provider | Use Case |
+|----------|----------|
+| `Ollama` | Main local workflow, including the fine-tuned 9B model |
+| `OpenAI` | Optional cloud comparison / testing |
+| `Anthropic` | Optional cloud comparison / testing |
 
-The bottom toolbar provides:
+Configure defaults in `.env`, or use the API key dialog inside the app for cloud providers.
 
-| Button | Action |
-|--------|--------|
-| Front / Top / Iso | Camera preset angles |
-| XY / XZ / YZ | Toggle grid planes on each axis pair |
-| W | Toggle wireframe mode |
-| Reset | Reset camera to default position |
-| Download | Export STL |
-| Camera | Take viewport screenshot |
-| Settings | Quality slider, $fn segments, resolution, compat mode |
+### Compile From the Command Line
 
-Grid planes default to XY only (floor plane). Toggle XZ (front wall) or YZ (side wall) for additional reference planes. All grids are visible from both sides when orbiting.
-
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Cmd/Ctrl + Enter` | Compile and render |
-| `Cmd/Ctrl + S` | Save current file |
-| `Cmd/Ctrl + B` | Toggle file explorer |
-| `Cmd/Ctrl + Shift + P` | Command palette |
-
-## Project Structure
-
+```bash
+./studio.sh compile mymodel.scad -o mymodel.stl
+./studio.sh exec server
 ```
+
+Inside the server container, `"$EXTOPENSCAD"` and `admesh` are available for manual inspection and debugging.
+
+## Repository Structure
+
+```text
 frontend/          React + Vite + TypeScript app
-server/            Node.js API server (zero dependencies)
-docker/            ImplicitCAD Dockerfile + entrypoint
-ai_context/        ImplicitCAD language reference for LLM prompts
-prompt/            Prompt templates for LLM benchmarking
-test_files/        96 reference test cases (STL + admesh + prompts)
-second-train/      Training data for LLM fine-tuning
-studio.sh          TUI launcher — single entry point for all operations
-.env.example       Environment variable template
+server/            Node.js API server and compile / chat orchestration
+docker/            Dockerfiles and container entrypoints
+ollama/            Ollama Modelfiles for the local app models
+ai_context/        ImplicitCAD language reference material used by the server prompt
+second-train/      Training data and related model artifacts
+test_files/        Reference cases and benchmark assets
+studio.sh          Main TUI entry point
+.env.example       Runtime configuration template
 ```
-
-## AI Configuration
-
-The AI chat panel supports multiple providers. Select in the UI or configure via `.env`:
-
-| Provider | Setup |
-|----------|-------|
-| **Ollama** (default) | Run `./studio.sh` → "Add 9B" to download the fine-tuned model |
-| **OpenAI** | Set `OPENAI_API_KEY` in `.env` or via the API Keys dialog in the UI |
-| **Anthropic** | Set `ANTHROPIC_API_KEY` in `.env` or via the API Keys dialog in the UI |
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| Port conflict on 14000 | Change `SERVER_HOST_PORT` in `.env` |
-| Vite proxy errors | Ensure Docker backends are running: `docker compose up -d implicitcad server` |
-| "Docker backend not responding" | Wait ~10s after `docker compose up` for ImplicitCAD to compile its first build |
-| Ollama not detected (Linux) | Ollama must listen on all interfaces: `sudo systemctl edit ollama`, add `Environment="OLLAMA_HOST=0.0.0.0"` under `[Service]`, then `sudo systemctl restart ollama`. Set `OLLAMA_URL=http://<bridge-ip>:11434` in `.env` where `<bridge-ip>` is your Docker bridge IP (find it with `ip -4 addr show docker0` or `docker network inspect bridge`; typically `172.17.0.1`). `./studio.sh` will auto-detect and guide you. |
-| Build fails with OOM | Increase Docker memory limit to 4 GB+ (Docker Desktop → Settings → Resources) |
-| Frontend shows blank page | Check browser console. Try `docker compose logs frontend` for nginx errors |
+| Problem | What to check |
+|---------|---------------|
+| Port conflict on `14000` | Change `SERVER_HOST_PORT` in `.env` |
+| Frontend URL unknown in Docker mode | Run `docker compose port frontend 3000` |
+| Vite proxy errors in local dev | Ensure `docker compose up -d implicitcad server` is running |
+| Ollama not reachable on Linux | Set `OLLAMA_HOST=0.0.0.0`, restart Ollama, and point `OLLAMA_URL` at the Docker bridge IP |
+| Build runs out of memory | Increase Docker memory to at least `4 GB`, preferably more for local model use |
+| Frontend loads but API fails | Check `docker compose logs server` and `./studio.sh --status` |
+
+## Team
+
+CSC398 Group 5
+
+- Ziao Liu
+- Ziheng Zhou
+- Leon Wang
+- Haoping Yang
+- Hyeonbin (Owen) Chun
+
+University of Toronto
 
 ## License
 
-AGPL-3.0-or-later (same as ImplicitCAD)
+AGPL-3.0-or-later
