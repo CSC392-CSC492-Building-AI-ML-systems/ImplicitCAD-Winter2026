@@ -140,8 +140,8 @@ export default function App() {
   const rightBottomEmpty = useLayoutStore((s) => s.zones.bottomRight.length === 0)
 
   const handleRender = useCallback(() => {
-    render(code)
-  }, [render, code])
+    render(useEditorStore.getState().code)
+  }, [render])
 
   const handleCodeChange = useCallback(
     (newCode: string) => {
