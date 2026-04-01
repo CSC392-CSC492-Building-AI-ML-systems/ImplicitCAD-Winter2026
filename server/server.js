@@ -16,7 +16,7 @@ const http = require('http')
 const fs = require('fs')
 const path = require('path')
 const url = require('url')
-const { execSync } = require('child_process')
+const { execSync, spawn } = require('child_process')
 const os = require('os')
 
 const PORT = parseInt(process.env.PORT || '4000', 10)
