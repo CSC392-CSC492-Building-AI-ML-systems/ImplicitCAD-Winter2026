@@ -123,7 +123,6 @@ function SmallViewportFallback() {
 /* ── App ───────────────────────────────────────────────────────────── */
 
 export default function App() {
-  const code = useEditorStore((s) => s.code)
   const log = useEditorStore((s) => s.log)
   const setBackendMode = useViewerStore((s) => s.setBackendMode)
   const { render, scheduleRender } = useRender()
