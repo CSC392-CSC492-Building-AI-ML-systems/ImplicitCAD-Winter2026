@@ -172,9 +172,10 @@ The Studio is important because the model is most useful inside an interactive l
 ```bash
 git clone https://github.com/CSC392-CSC492-Building-AI-ML-systems/ImplicitCAD-Winter2026.git
 cd ImplicitCAD-Winter2026
-cp .env.example .env
 ./studio.sh
 ```
+
+> `.env` is optional — all defaults work out of the box on macOS/Windows with Docker Desktop. Copy `.env.example` to `.env` only if you need to customize ports, API keys, or Ollama URL (see [Troubleshooting](#troubleshooting) for Linux).
 
 In the TUI:
 

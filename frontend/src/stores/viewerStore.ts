@@ -81,7 +81,7 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   cameraRef: null,
   controlsRef: null,
   fnSegments: null,
-  compilerResolution: '2',
+  compilerResolution: '4',
   compatMode: true,
   validation: null,
   modelName: localStorage.getItem('implicitcad-model-name') || 'model',

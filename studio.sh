@@ -66,17 +66,26 @@ detect_system() {
     GPU_INFO=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 || echo "NVIDIA")
   fi
 
-  # Docker
+  # curl is required for Ollama install, API health checks, and model pulling
+  CURL_OK=false
+  if command -v curl &>/dev/null; then
+    CURL_OK=true
+  fi
+
+  # Docker — distinguish CLI installed vs daemon reachable
   DOCKER_OK=false
+  DOCKER_DAEMON_OK=false
   DOCKER_VER="not found"
   DOCKER_COMPOSE_VER=""
   if command -v docker &>/dev/null; then
+    DOCKER_OK=true
     DOCKER_VER=$(docker version --format '{{.Server.Version}}' 2>/dev/null || true)
     DOCKER_VER="${DOCKER_VER//[$'\n\r']/}"  # strip newlines
-    if [ -z "$DOCKER_VER" ]; then
+    if [ -n "$DOCKER_VER" ] && docker info &>/dev/null; then
+      DOCKER_DAEMON_OK=true
+    else
       DOCKER_VER="installed (daemon not running)"
     fi
-    DOCKER_OK=true
   fi
 
   # Docker Compose
@@ -183,7 +192,7 @@ detect_system() {
 # ── Display Header ───────────────────────────────────────────────────────────
 
 show_header() {
-  clear
+  clear 2>/dev/null || true
   echo ""
   echo -e "${C}╔══════════════════════════════════════════════════════╗${D}"
   echo -e "${C}║${W}        ImplicitCAD Studio                            ${C}║${D}"
@@ -259,6 +268,12 @@ install_ollama() {
     return
   fi
 
+  if ! $CURL_OK; then
+    fail "curl is required to install Ollama. Install curl first:"
+    echo -e "    ${C}apt-get install -y curl${D}  or  ${C}brew install curl${D}"
+    return
+  fi
+
   echo ""
   echo -e "  ${W}Ollama Installation${D}"
   echo ""
@@ -293,10 +308,19 @@ install_ollama() {
           # Install zstd first if missing (needed by newer Ollama installer)
           if ! command -v zstd &>/dev/null; then
             echo -e "  ${DIM}Installing zstd (required by Ollama installer)...${D}"
+            local _sudo="sudo"
+            [ "$(id -u)" -eq 0 ] && _sudo=""
             if command -v apt-get &>/dev/null; then
-              sudo apt-get update -qq && sudo apt-get install -y -qq zstd 2>/dev/null || true
+              $_sudo apt-get update -qq && $_sudo apt-get install -y -qq zstd 2>/dev/null || true
             elif command -v dnf &>/dev/null; then
-              sudo dnf install -y zstd 2>/dev/null || true
+              $_sudo dnf install -y zstd 2>/dev/null || true
+            elif command -v pacman &>/dev/null; then
+              $_sudo pacman -S --noconfirm zstd 2>/dev/null || true
+            fi
+            # Verify zstd installed successfully
+            if ! command -v zstd &>/dev/null; then
+              warn "Could not install zstd automatically. Ollama installer may fail."
+              echo -e "    ${DIM}Install manually: ${C}apt-get install -y zstd${D} / ${C}dnf install -y zstd${D} / ${C}pacman -S zstd${D}"
             fi
           fi
           curl -fsSL https://ollama.com/install.sh | sh
@@ -306,8 +330,9 @@ install_ollama() {
           # Disable systemd service — we run ollama as current user to avoid permission issues
           if command -v systemctl &>/dev/null && systemctl is-active ollama &>/dev/null; then
             echo -e "  ${DIM}Disabling Ollama system service (will run as current user instead)...${D}"
-            sudo systemctl stop ollama 2>/dev/null || true
-            sudo systemctl disable ollama 2>/dev/null || true
+            local _sc="sudo"; [ "$(id -u)" -eq 0 ] && _sc=""
+            $_sc systemctl stop ollama 2>/dev/null || true
+            $_sc systemctl disable ollama 2>/dev/null || true
           fi
           ;;
       esac
@@ -324,6 +349,10 @@ ensure_ollama_running() {
   if $OLLAMA_RUNNING; then return; fi
   if ! $OLLAMA_OK; then
     fail "Ollama not installed. Use option 1 to set up."
+    return 1
+  fi
+  if ! $CURL_OK; then
+    fail "curl is required to verify Ollama is running. Install curl first."
     return 1
   fi
 
@@ -347,13 +376,16 @@ ensure_ollama_running() {
     service_user=$(ps -eo user,comm 2>/dev/null | grep -w "ollama" | grep -v grep | head -1 | awk '{print $1}' || true)
     if [ -n "$service_user" ] && [ "$service_user" != "$(whoami)" ]; then
       echo -e "  ${DIM}Stopping Ollama system service (runs as '${service_user}', need current user)...${D}"
-      sudo systemctl stop ollama 2>/dev/null || true
+      local _sc2="sudo"; [ "$(id -u)" -eq 0 ] && _sc2=""
+      $_sc2 systemctl stop ollama 2>/dev/null || true
       sleep 1
     fi
   fi
 
   echo -e "  Starting Ollama as $(whoami)..."
-  ollama serve &>/dev/null &
+  local _ollama_log="/tmp/ollama-studio-$$.log"
+  local _pidfile="/tmp/ollama-studio.pid"
+  ollama serve >"$_ollama_log" 2>&1 &
   local ollama_pid=$!
   disown
 
@@ -368,7 +400,9 @@ ensure_ollama_running() {
       info "Ollama already running"
       return
     fi
-    fail "Ollama process exited immediately. Check 'ollama serve' manually for errors."
+    fail "Ollama process exited immediately."
+    echo -e "    ${DIM}Log: $(tail -3 "$_ollama_log" 2>/dev/null || echo 'no log')${D}"
+    echo -e "    ${DIM}Try running: ${C}ollama serve${D} manually to see errors.${D}"
     return 1
   fi
 
@@ -378,6 +412,8 @@ ensure_ollama_running() {
       OLLAMA_RUNNING=true
       OLLAMA_API_OK=true
       if [ -z "$OLLAMA_URL_IN_USE" ]; then OLLAMA_URL_IN_USE="http://localhost:11434"; fi
+      # Only write PID file after successful health check
+      echo "$ollama_pid" > "$_pidfile"
       info "Ollama started as $(whoami)"
       return
     fi
@@ -519,6 +555,10 @@ start_studio() {
     fail "Docker not found. Install from https://docs.docker.com/get-docker/"
     return
   fi
+  if ! $DOCKER_DAEMON_OK; then
+    fail "Docker daemon is not running. Start Docker Desktop or run 'dockerd' first."
+    return
+  fi
   if [ -z "$COMPOSE" ]; then
     fail "docker compose not found."
     return
@@ -575,10 +615,21 @@ stop_all() {
   fi
   info "Docker services stopped"
 
-  # Stop Ollama if we started it
-  if pgrep -x ollama &>/dev/null; then
-    pkill -x ollama 2>/dev/null || true
-    info "Ollama stopped"
+  # Stop only the Ollama process we started (don't kill user's other Ollama instances)
+  local _pidfile="/tmp/ollama-studio.pid"
+  if [ -f "$_pidfile" ]; then
+    local _pid
+    _pid=$(cat "$_pidfile" 2>/dev/null)
+    if [ -n "$_pid" ] && kill -0 "$_pid" 2>/dev/null; then
+      # Verify the PID is actually an ollama process before killing
+      local _proc_name
+      _proc_name=$(ps -p "$_pid" -o comm= 2>/dev/null || true)
+      if [ "$_proc_name" = "ollama" ]; then
+        kill "$_pid" 2>/dev/null || true
+        info "Ollama stopped (pid $_pid)"
+      fi
+    fi
+    rm -f "$_pidfile"
   fi
   echo ""
 }
@@ -612,13 +663,17 @@ setup_first_time() {
   # Step 2: Verify Docker
   echo ""
   echo -e "  ${C}Step 2/2:${D} Docker..."
-  if $DOCKER_OK; then
-    info "Docker found (${DOCKER_VER})"
-  else
+  if ! $DOCKER_OK; then
     fail "Docker not found. Install from https://docs.docker.com/get-docker/"
     echo -e "    ${DIM}Docker is required to run Studio services.${D}"
     return
   fi
+  if ! $DOCKER_DAEMON_OK; then
+    fail "Docker is installed but the daemon is not running."
+    echo -e "    ${DIM}Start Docker Desktop or run: ${C}dockerd${D}"
+    return
+  fi
+  info "Docker found (${DOCKER_VER})"
   if [ -n "$COMPOSE" ]; then
     info "Docker Compose found"
   else
@@ -1161,7 +1216,11 @@ build_menu_state() {
   local need_docker=""
   local need_ollama=""
 
-  if ! $DOCKER_OK; then need_docker="${R}✗ Install Docker first${D}"; fi
+  if ! $DOCKER_OK; then
+    need_docker="${R}✗ Install Docker first${D}"
+  elif ! $DOCKER_DAEMON_OK; then
+    need_docker="${R}✗ Start Docker daemon${D}"
+  fi
   if ! $OLLAMA_OK; then need_ollama="${R}✗ Install Ollama first${D}"; fi
 
   # 0: First-time setup — needs Docker
@@ -1341,7 +1400,7 @@ run_selection() {
 
   # Block disabled items
   if [ -n "${MENU_DISABLED[$sel]}" ]; then
-    clear
+    clear 2>/dev/null || true
     echo ""
     local label="${MENU_LABELS[$sel]}"
     if ! $DOCKER_OK && ! $OLLAMA_OK; then
@@ -1351,6 +1410,9 @@ run_selection() {
     elif ! $DOCKER_OK; then
       fail "${label} requires Docker."
       echo -e "    Install: ${C}https://docs.docker.com/get-docker/${D}"
+    elif ! $DOCKER_DAEMON_OK; then
+      fail "${label} requires the Docker daemon to be running."
+      echo -e "    Start Docker Desktop or run: ${C}dockerd${D}"
     elif ! $OLLAMA_OK; then
       fail "${label} requires Ollama."
       echo -e "    Install: ${C}brew install ollama${D} or ${C}https://ollama.com/download${D}"
@@ -1361,7 +1423,7 @@ run_selection() {
   fi
 
   # Clear screen before running commands — avoids garbled ANSI positioning
-  clear
+  clear 2>/dev/null || true
   echo ""
   case "$sel" in
     0) setup_first_time ;;

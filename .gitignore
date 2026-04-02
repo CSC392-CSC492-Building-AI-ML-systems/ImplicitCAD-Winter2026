@@ -43,5 +43,9 @@ _workspace/
 # Docker
 docker-compose.override.yml
 
+# SSH keys
+runpod
+runpod.pub
+
 #Folder
 my-video/
