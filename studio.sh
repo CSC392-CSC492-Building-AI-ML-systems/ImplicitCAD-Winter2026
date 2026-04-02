@@ -237,24 +237,58 @@ show_header() {
 check_versions() {
   local warnings=0
 
-  # Docker version check (minimum 20.x) — only if we got a numeric version
-  if $DOCKER_OK; then
-    local docker_major
-    docker_major=$(echo "$DOCKER_VER" | cut -d. -f1)
-    if [[ "$docker_major" =~ ^[0-9]+$ ]] && [ "$docker_major" -lt 20 ]; then
-      warn "Docker $DOCKER_VER is old. Version 20+ recommended."
-      warnings=$((warnings + 1))
-    fi
+  # Docker version check (minimum 20.x)
+  if $DOCKER_OK && ! docker_version_supported; then
+    warn "Docker $DOCKER_VER is old. Version 20+ recommended."
+    warnings=$((warnings + 1))
   fi
 
   # Ollama version check (minimum 0.5.x for HuggingFace model support)
-  if $OLLAMA_LOCAL && [ "$OLLAMA_VER" != "not found" ] && [ "$OLLAMA_VER" != "remote" ]; then
-    local ollama_minor
-    ollama_minor=$(echo "$OLLAMA_VER" | cut -d. -f2)
-    if [ "$ollama_minor" -lt 5 ] 2>/dev/null; then
-      warn "Ollama $OLLAMA_VER is old. Version 0.5+ needed for HuggingFace model support."
-      warnings=$((warnings + 1))
+  if $OLLAMA_LOCAL && [ "$OLLAMA_VER" != "not found" ] && [ "$OLLAMA_VER" != "remote" ] && ! ollama_version_supported; then
+    warn "Ollama $OLLAMA_VER is old. Version 0.5+ needed for HuggingFace model support."
+    warnings=$((warnings + 1))
+  fi
+
+  return 0
+}
+
+docker_version_supported() {
+  if ! $DOCKER_OK; then return 0; fi
+  local docker_major
+  docker_major=$(echo "$DOCKER_VER" | cut -d. -f1)
+  if [[ "$docker_major" =~ ^[0-9]+$ ]] && [ "$docker_major" -lt 20 ]; then
+    return 1
+  fi
+  return 0
+}
+
+ollama_version_supported() {
+  if ! $OLLAMA_LOCAL || [ "$OLLAMA_VER" = "not found" ] || [ "$OLLAMA_VER" = "remote" ]; then
+    return 0
+  fi
+
+  local ollama_major ollama_minor
+  ollama_major=$(echo "$OLLAMA_VER" | cut -d. -f1)
+  ollama_minor=$(echo "$OLLAMA_VER" | cut -d. -f2)
+
+  if [[ "$ollama_major" =~ ^[0-9]+$ ]] && [[ "$ollama_minor" =~ ^[0-9]+$ ]]; then
+    if [ "$ollama_major" -eq 0 ] && [ "$ollama_minor" -lt 5 ]; then
+      return 1
     fi
+  fi
+
+  return 0
+}
+
+require_supported_versions() {
+  if ! docker_version_supported; then
+    fail "Docker $DOCKER_VER is too old. Upgrade to Docker 20+."
+    return 1
+  fi
+
+  if ! ollama_version_supported; then
+    fail "Ollama $OLLAMA_VER is too old. Upgrade to Ollama 0.5+."
+    return 1
   fi
 
   return 0
@@ -563,6 +597,7 @@ start_studio() {
     fail "docker compose not found."
     return
   fi
+  require_supported_versions || return
 
   # Create workspace
   export WORKSPACE_DIR="${WORKSPACE_DIR:-${SCRIPT_DIR}/_workspace}"
@@ -658,6 +693,7 @@ setup_first_time() {
   # Step 1: Install Ollama
   echo -e "  ${C}Step 1/2:${D} Ollama..."
   install_ollama
+  require_supported_versions || return
   ensure_ollama_running || return
 
   # Step 2: Verify Docker
@@ -697,6 +733,7 @@ setup_0_8b() {
   echo ""
 
   ensure_ollama_running || return
+  require_supported_versions || return
 
   # Step 1: Pull base model (skip if already pulled)
   echo -e "  ${C}Step 1/2:${D} Pulling base model (qwen3.5:0.8b, ~1GB)..."
@@ -732,6 +769,7 @@ setup_9b() {
   echo ""
 
   ensure_ollama_running || return
+  require_supported_versions || return
 
   # Step 1: Pull merged model from HuggingFace
   echo -e "  ${C}Step 1/2:${D} Pulling model from HuggingFace (~6GB)..."
@@ -782,6 +820,7 @@ setup_27b() {
   echo ""
 
   ensure_ollama_running || return
+  require_supported_versions || return
 
   echo -e "  ${C}Step 1/2:${D} Pulling model from HuggingFace (~15.4GB)..."
   echo -e "  ${DIM}Large download — if it times out, it will resume where it left off on retry.${D}"

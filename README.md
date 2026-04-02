@@ -176,6 +176,8 @@ cd ImplicitCAD-Winter2026
 ```
 
 > `.env` is optional — all defaults work out of the box on macOS/Windows with Docker Desktop. Copy `.env.example` to `.env` only if you need to customize ports, API keys, or Ollama URL (see [Troubleshooting](#troubleshooting) for Linux).
+>
+> `./studio.sh` can help install or verify Ollama, but it does **not** install Docker for you. Install Docker manually first, then run the script.
 
 In the TUI:
 
@@ -187,11 +189,57 @@ In the TUI:
 
 ### System Requirements
 
-- Docker `20+` with Docker Compose v2
 - `4 GB` RAM minimum
 - `8 GB+` RAM recommended for local AI inference
-- about `10 GB` free disk space for Docker images and model assets
+- Docker `20+`
+- Docker Compose v2 recommended (`docker compose`), with `docker-compose` also supported
+- Ollama `0.5+` for local model setup and local chat
 - Node.js `18+` only if you want to run the frontend dev server locally
+
+### Required Tools
+
+| Tool | Minimum Version | Required | How to install |
+|------|-----------------|----------|----------------|
+| Docker | `20+` | Yes | Install manually from the [official Docker docs](https://docs.docker.com/get-docker/). Docker Desktop or Docker Engine both work. |
+| Docker Compose | v2 recommended | Yes | Usually included with Docker Desktop. The script also accepts legacy `docker-compose` if present. |
+| Ollama | `0.5+` | Yes for local AI | `./studio.sh` can install or check it for you. On Linux/WSL it uses `curl`; on macOS it prefers Homebrew or the official download. |
+| `curl` | recent HTTPS-capable version | Required for scripted Ollama setup | Usually preinstalled. Install manually if missing. |
+| `zstd` | any recent package version | Linux/WSL only, for Ollama install | The script tries to install it automatically on Linux/WSL. |
+
+### What `./studio.sh` Does and Does Not Install
+
+| Component | Script behavior |
+|-----------|-----------------|
+| Docker | **Not installed by the script.** You must install Docker or Docker Desktop yourself. |
+| Docker Compose | **Not installed separately by the script.** It expects Compose to come from your Docker installation. |
+| Docker daemon | **Not started by the script if Docker itself is missing.** Docker Desktop or `dockerd` must already be available. |
+| Ollama | **Can be installed or checked by the script.** On Linux/WSL it uses the official `curl` installer; on macOS it prefers Homebrew and otherwise tells you to install manually. |
+| `curl` | **Not installed by the script.** If missing, install it yourself first. |
+| `zstd` | **May be installed automatically on Linux/WSL.** The script tries `apt-get`, `dnf`, or `pacman` before running the Ollama installer. |
+| Local models | **Installed by the script on request.** `Add 0.8B`, `Add 9B`, and `Add 27B` pull the base model and create the app model alias. |
+
+In short:
+
+- install Docker yourself first
+- let `./studio.sh` handle Ollama and model setup if you want the easiest path
+- if the script cannot install Ollama on your machine, use the manual commands in [Manual Setup Fallback](#manual-setup-fallback)
+
+### Disk Budget
+
+Plan your free space based on what you want to run:
+
+| Item | Approximate Disk Usage |
+|------|------------------------|
+| Docker images and containers | `~2 GB` |
+| Ollama 0.8B test model | `~1 GB` |
+| Ollama 9B production model | `~6 GB` |
+| Ollama 27B advanced model | `~16 GB` |
+
+The prerequisite tools themselves are relatively small except Docker Desktop, which also takes extra disk space on macOS/Windows. In practice:
+
+- budget `4-5 GB` free just to boot the app and build containers
+- budget `10+ GB` free if you want the 9B model
+- budget `20+ GB` free if you want the 27B model
 
 ### TUI Workflow
 
@@ -208,6 +256,70 @@ In the TUI:
 | Advanced tools | Shell access, smoke tests, compile helpers, and logs |
 | Stop all services | Stops Docker services and Ollama |
 | Full rebuild | Rebuilds all containers from scratch |
+
+### Command-Line Workflow
+
+If you do not want to use the interactive menu, the same setup flow is available by command:
+
+```bash
+./studio.sh --install
+./studio.sh --setup-9b
+./studio.sh --start
+./studio.sh --status
+./studio.sh --stop
+```
+
+The script checks for unsupported tool versions and will stop if Docker is below `20` or Ollama is below `0.5`.
+
+### Manual Setup Fallback
+
+If `./studio.sh` does not work on your machine, you can still bring the project up manually.
+
+1. Install Docker manually from the official docs and make sure the Docker daemon is running.
+2. Install Ollama manually.
+
+Linux / WSL:
+
+```bash
+sudo apt-get install -y curl zstd
+curl -fsSL https://ollama.com/install.sh | sh
+ollama serve
+```
+
+If you are on Fedora or Arch instead of Debian/Ubuntu, install `curl` and `zstd` with `dnf` or `pacman` first, then run the same `curl ... | sh` Ollama installer.
+
+macOS:
+
+```bash
+brew install ollama
+ollama serve
+```
+
+If you do not use Homebrew, install Ollama manually from `https://ollama.com/download` and then run `ollama serve`.
+
+3. Start the Studio services:
+
+```bash
+docker compose up -d --build
+docker compose port frontend 3000
+```
+
+If your machine only has legacy Compose installed, replace `docker compose` with `docker-compose`.
+
+4. If you want the fine-tuned 9B model, pull and register it manually:
+
+```bash
+ollama pull hf.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct
+ollama create implicitcad-9b -f ./ollama/Modelfile.9b
+```
+
+5. Verify everything:
+
+```bash
+./studio.sh --status
+curl http://localhost:11434/api/tags
+docker compose logs --tail=50 server
+```
 
 ### Docker Commands
 
@@ -317,6 +429,10 @@ studio.sh          Main TUI entry point
 | Problem | What to check |
 |---------|---------------|
 | Port conflict on `14000` | Change `SERVER_HOST_PORT` in `.env` |
+| Docker is installed but nothing starts | Make sure the Docker daemon or Docker Desktop is actually running |
+| `./studio.sh` says Docker or Ollama is too old | Upgrade to Docker `20+` and Ollama `0.5+` |
+| `curl` missing during setup | Install `curl` manually, then rerun `./studio.sh --install` |
+| `zstd` missing on Linux / WSL | Install `zstd` manually, then rerun the Ollama install step |
 | Frontend URL unknown in Docker mode | Run `docker compose port frontend 3000` |
 | Vite proxy errors in local dev | Ensure `docker compose up -d implicitcad server` is running |
 | Ollama not reachable on Linux | Set `OLLAMA_HOST=0.0.0.0`, restart Ollama, and point `OLLAMA_URL` at the Docker bridge IP |
