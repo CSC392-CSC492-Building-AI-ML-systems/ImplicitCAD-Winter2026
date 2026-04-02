@@ -21,6 +21,10 @@ The main contribution of the project is the model-training and evaluation pipeli
 
 Model weights are hosted on Hugging Face (see links in the [Model](#model) section below).
 
+### Special Thanks
+
+Special thanks to our industry mentors [Julia Longtin](https://github.com/julialongtin) and [Arthur Wolf](https://github.com/arthurwolf), and to the [ImplicitCAD project](https://implicitcad.org/) for the language, toolchain, and reference material that made this work possible.
+
 <div align="center">
   <img src="docs/studio-overview.png" alt="ImplicitCAD Studio — code editor, 3D viewer, and AI chat" width="800">
   <br><em>ImplicitCAD Studio: edit code, compile to STL, preview in 3D, and generate code with AI</em>
@@ -51,9 +55,9 @@ The model takes a natural-language editing instruction plus existing code, and o
 
 | Model | Size | Download | RAM Required | GPU | Best For |
 |-------|------|----------|-------------|-----|----------|
-| **Qwen3.5-9B** (recommended) | ~5 GB | [HuggingFace](https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct) | 8 GB+ | Optional | Main evaluated model from the whitepaper. Best balance of quality and hardware requirements. |
+| **Qwen3.5-9B** (recommended) | ~5 GB | Via `./studio.sh` -> "Add 9B" or [HuggingFace](https://huggingface.co/Max2475/Qwen3.5-9B-OpenSCAD-Instruct) | 8 GB+ | Optional | Main evaluated model from the whitepaper. Best balance of quality and hardware requirements. |
 | **Qwen3.5-27B** | ~15.4 GB | Via `./studio.sh` -> "Add 27B" or [HuggingFace](https://huggingface.co/ziaoliu/Qwen3.5-27B-OpenSCAD-Instruct) | 32 GB+ | Recommended (16 GB+ VRAM) | Higher quality output, handles complex geometry better. Requires a powerful machine. |
-| **Qwen3.5-0.8B** (test) | ~1 GB | Via `./studio.sh` → "Add 0.8B" | 4 GB | Not needed | Lightweight test model for verifying setup. Not fine-tuned — not representative of project quality. |
+| **Qwen3.5-0.8B** (test) | ~1 GB | Via `./studio.sh` -> "Add 0.8B" | 4 GB | Not needed | Lightweight test model for verifying setup. Not fine-tuned — not representative of project quality. |
 
 | Artifact | Link |
 |----------|------|
