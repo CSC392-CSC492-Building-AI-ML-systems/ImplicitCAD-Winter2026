@@ -13,6 +13,10 @@ This project fine-tunes an LLM to turn natural-language 3D editing requests into
 
 > Suitable for rapid prototyping, research, and education. Not intended for manufacturing guarantees or safety-critical use.
 
+### Special Thanks
+
+Special thanks to our industry mentors [Julia Longtin](https://github.com/julialongtin) and [Arthur Wolf](https://github.com/arthurwolf), and to the [ImplicitCAD project](https://implicitcad.org/) for the language, toolchain, and reference material that made this work possible.
+
 ## Overview
 
 Code-based 3D modeling tools such as OpenSCAD and ImplicitCAD are precise and reproducible, but they are difficult for new users because geometric ideas must be translated into compilable programs. This project explores whether a domain-tuned LLM can lower that barrier by turning natural-language editing requests into working SCAD code, then pairing the model with compilation, mesh validation, and an interactive studio interface.
@@ -20,10 +24,6 @@ Code-based 3D modeling tools such as OpenSCAD and ImplicitCAD are precise and re
 The main contribution of the project is the model-training and evaluation pipeline. ImplicitCAD Studio is the integrated demo environment built around that model.
 
 Model weights are hosted on Hugging Face (see links in the [Model](#model) section below).
-
-### Special Thanks
-
-Special thanks to our industry mentors [Julia Longtin](https://github.com/julialongtin) and [Arthur Wolf](https://github.com/arthurwolf), and to the [ImplicitCAD project](https://implicitcad.org/) for the language, toolchain, and reference material that made this work possible.
 
 <div align="center">
   <img src="docs/studio-overview.png" alt="ImplicitCAD Studio — code editor, 3D viewer, and AI chat" width="800">
