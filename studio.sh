@@ -23,6 +23,9 @@ fail()  { echo -e "  ${R}✗${D} $1"; }
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Source .env if present (same vars Docker Compose reads)
+[ -f "$SCRIPT_DIR/.env" ] && set -a && . "$SCRIPT_DIR/.env" && set +a
+
 # ── System Detection ─────────────────────────────────────────────────────────
 
 detect_system() {
@@ -63,17 +66,26 @@ detect_system() {
     GPU_INFO=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 || echo "NVIDIA")
   fi
 
-  # Docker
+  # curl is required for Ollama install, API health checks, and model pulling
+  CURL_OK=false
+  if command -v curl &>/dev/null; then
+    CURL_OK=true
+  fi
+
+  # Docker — distinguish CLI installed vs daemon reachable
   DOCKER_OK=false
+  DOCKER_DAEMON_OK=false
   DOCKER_VER="not found"
   DOCKER_COMPOSE_VER=""
   if command -v docker &>/dev/null; then
+    DOCKER_OK=true
     DOCKER_VER=$(docker version --format '{{.Server.Version}}' 2>/dev/null || true)
     DOCKER_VER="${DOCKER_VER//[$'\n\r']/}"  # strip newlines
-    if [ -z "$DOCKER_VER" ]; then
+    if [ -n "$DOCKER_VER" ] && docker info &>/dev/null; then
+      DOCKER_DAEMON_OK=true
+    else
       DOCKER_VER="installed (daemon not running)"
     fi
-    DOCKER_OK=true
   fi
 
   # Docker Compose
@@ -133,6 +145,30 @@ detect_system() {
   if ! $OLLAMA_API_OK; then
     _try_ollama_url "http://host.docker.internal:11434" || true
   fi
+  if ! $OLLAMA_API_OK && [ "$OS_NAME" = "Linux" ]; then
+    # Linux (non-Desktop Docker): try the Docker bridge interface IP.
+    # This is the IP containers use to reach host services — NOT the LAN gateway.
+    local bridge_ip=""
+    # Method 1: docker0 interface IP (most common)
+    bridge_ip=$(ip -4 addr show docker0 2>/dev/null | awk '/inet /{gsub(/\/.*/, "", $2); print $2}' || true)
+    # Method 2: Docker bridge network gateway via docker inspect
+    if [ -z "$bridge_ip" ] && command -v docker &>/dev/null; then
+      bridge_ip=$(docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null || true)
+    fi
+    if [ -n "$bridge_ip" ]; then
+      _try_ollama_url "http://${bridge_ip}:11434" || true
+    fi
+    if ! $OLLAMA_API_OK && ! $OLLAMA_RUNNING; then
+      warn "Ollama not reachable from Docker. On Linux, Ollama must listen on all interfaces:"
+      echo -e "    ${C}sudo systemctl edit ollama${D}  then add:"
+      echo -e "    ${DIM}[Service]${D}"
+      echo -e "    ${DIM}Environment=\"OLLAMA_HOST=0.0.0.0\"${D}"
+      echo -e "    Then: ${C}sudo systemctl restart ollama${D}"
+      if [ -n "$bridge_ip" ]; then
+        echo -e "    And set in .env: ${C}OLLAMA_URL=http://${bridge_ip}:11434${D}"
+      fi
+    fi
+  fi
   if ! $OLLAMA_API_OK && [ "$OS_NAME" = "WSL2" ]; then
     # WSL: try Windows host IP from /etc/resolv.conf
     local win_ip
@@ -156,7 +192,7 @@ detect_system() {
 # ── Display Header ───────────────────────────────────────────────────────────
 
 show_header() {
-  clear
+  clear 2>/dev/null || true
   echo ""
   echo -e "${C}╔══════════════════════════════════════════════════════╗${D}"
   echo -e "${C}║${W}        ImplicitCAD Studio                            ${C}║${D}"
@@ -183,6 +219,7 @@ show_header() {
   echo -e "  ${DIM}Docker services use ~200MB RAM + ~2GB disk (images)${D}"
   echo -e "  ${DIM}0.8B test model: ~1GB disk, ~1GB RAM    (any machine)${D}"
   echo -e "  ${DIM}9B  production:  ~6GB disk, ~6GB RAM    (8GB+ total recommended)${D}"
+  echo -e "  ${DIM}27B advanced:   ~16GB disk, ~32GB RAM   (powerful machine recommended)${D}"
   # Warnings based on actual system
   if [ "$RAM_GB" -lt 4 ] 2>/dev/null; then
     echo -e "  ${R}⚠ ${RAM_GB}GB RAM is below minimum (4GB). Docker + 0.8B model may not fit.${D}"
@@ -200,24 +237,58 @@ show_header() {
 check_versions() {
   local warnings=0
 
-  # Docker version check (minimum 20.x) — only if we got a numeric version
-  if $DOCKER_OK; then
-    local docker_major
-    docker_major=$(echo "$DOCKER_VER" | cut -d. -f1)
-    if [[ "$docker_major" =~ ^[0-9]+$ ]] && [ "$docker_major" -lt 20 ]; then
-      warn "Docker $DOCKER_VER is old. Version 20+ recommended."
-      warnings=$((warnings + 1))
-    fi
+  # Docker version check (minimum 20.x)
+  if $DOCKER_OK && ! docker_version_supported; then
+    warn "Docker $DOCKER_VER is old. Version 20+ recommended."
+    warnings=$((warnings + 1))
   fi
 
   # Ollama version check (minimum 0.5.x for HuggingFace model support)
-  if $OLLAMA_LOCAL && [ "$OLLAMA_VER" != "not found" ] && [ "$OLLAMA_VER" != "remote" ]; then
-    local ollama_minor
-    ollama_minor=$(echo "$OLLAMA_VER" | cut -d. -f2)
-    if [ "$ollama_minor" -lt 5 ] 2>/dev/null; then
-      warn "Ollama $OLLAMA_VER is old. Version 0.5+ needed for HuggingFace model support."
-      warnings=$((warnings + 1))
+  if $OLLAMA_LOCAL && [ "$OLLAMA_VER" != "not found" ] && [ "$OLLAMA_VER" != "remote" ] && ! ollama_version_supported; then
+    warn "Ollama $OLLAMA_VER is old. Version 0.5+ needed for HuggingFace model support."
+    warnings=$((warnings + 1))
+  fi
+
+  return 0
+}
+
+docker_version_supported() {
+  if ! $DOCKER_OK; then return 0; fi
+  local docker_major
+  docker_major=$(echo "$DOCKER_VER" | cut -d. -f1)
+  if [[ "$docker_major" =~ ^[0-9]+$ ]] && [ "$docker_major" -lt 20 ]; then
+    return 1
+  fi
+  return 0
+}
+
+ollama_version_supported() {
+  if ! $OLLAMA_LOCAL || [ "$OLLAMA_VER" = "not found" ] || [ "$OLLAMA_VER" = "remote" ]; then
+    return 0
+  fi
+
+  local ollama_major ollama_minor
+  ollama_major=$(echo "$OLLAMA_VER" | cut -d. -f1)
+  ollama_minor=$(echo "$OLLAMA_VER" | cut -d. -f2)
+
+  if [[ "$ollama_major" =~ ^[0-9]+$ ]] && [[ "$ollama_minor" =~ ^[0-9]+$ ]]; then
+    if [ "$ollama_major" -eq 0 ] && [ "$ollama_minor" -lt 5 ]; then
+      return 1
     fi
+  fi
+
+  return 0
+}
+
+require_supported_versions() {
+  if ! docker_version_supported; then
+    fail "Docker $DOCKER_VER is too old. Upgrade to Docker 20+."
+    return 1
+  fi
+
+  if ! ollama_version_supported; then
+    fail "Ollama $OLLAMA_VER is too old. Upgrade to Ollama 0.5+."
+    return 1
   fi
 
   return 0
@@ -228,6 +299,12 @@ check_versions() {
 install_ollama() {
   if $OLLAMA_OK; then
     info "Ollama already installed (${OLLAMA_VER})"
+    return
+  fi
+
+  if ! $CURL_OK; then
+    fail "curl is required to install Ollama. Install curl first:"
+    echo -e "    ${C}apt-get install -y curl${D}  or  ${C}brew install curl${D}"
     return
   fi
 
@@ -265,10 +342,19 @@ install_ollama() {
           # Install zstd first if missing (needed by newer Ollama installer)
           if ! command -v zstd &>/dev/null; then
             echo -e "  ${DIM}Installing zstd (required by Ollama installer)...${D}"
+            local _sudo="sudo"
+            [ "$(id -u)" -eq 0 ] && _sudo=""
             if command -v apt-get &>/dev/null; then
-              sudo apt-get update -qq && sudo apt-get install -y -qq zstd 2>/dev/null || true
+              $_sudo apt-get update -qq && $_sudo apt-get install -y -qq zstd 2>/dev/null || true
             elif command -v dnf &>/dev/null; then
-              sudo dnf install -y zstd 2>/dev/null || true
+              $_sudo dnf install -y zstd 2>/dev/null || true
+            elif command -v pacman &>/dev/null; then
+              $_sudo pacman -S --noconfirm zstd 2>/dev/null || true
+            fi
+            # Verify zstd installed successfully
+            if ! command -v zstd &>/dev/null; then
+              warn "Could not install zstd automatically. Ollama installer may fail."
+              echo -e "    ${DIM}Install manually: ${C}apt-get install -y zstd${D} / ${C}dnf install -y zstd${D} / ${C}pacman -S zstd${D}"
             fi
           fi
           curl -fsSL https://ollama.com/install.sh | sh
@@ -278,8 +364,9 @@ install_ollama() {
           # Disable systemd service — we run ollama as current user to avoid permission issues
           if command -v systemctl &>/dev/null && systemctl is-active ollama &>/dev/null; then
             echo -e "  ${DIM}Disabling Ollama system service (will run as current user instead)...${D}"
-            sudo systemctl stop ollama 2>/dev/null || true
-            sudo systemctl disable ollama 2>/dev/null || true
+            local _sc="sudo"; [ "$(id -u)" -eq 0 ] && _sc=""
+            $_sc systemctl stop ollama 2>/dev/null || true
+            $_sc systemctl disable ollama 2>/dev/null || true
           fi
           ;;
       esac
@@ -296,6 +383,10 @@ ensure_ollama_running() {
   if $OLLAMA_RUNNING; then return; fi
   if ! $OLLAMA_OK; then
     fail "Ollama not installed. Use option 1 to set up."
+    return 1
+  fi
+  if ! $CURL_OK; then
+    fail "curl is required to verify Ollama is running. Install curl first."
     return 1
   fi
 
@@ -319,13 +410,16 @@ ensure_ollama_running() {
     service_user=$(ps -eo user,comm 2>/dev/null | grep -w "ollama" | grep -v grep | head -1 | awk '{print $1}' || true)
     if [ -n "$service_user" ] && [ "$service_user" != "$(whoami)" ]; then
       echo -e "  ${DIM}Stopping Ollama system service (runs as '${service_user}', need current user)...${D}"
-      sudo systemctl stop ollama 2>/dev/null || true
+      local _sc2="sudo"; [ "$(id -u)" -eq 0 ] && _sc2=""
+      $_sc2 systemctl stop ollama 2>/dev/null || true
       sleep 1
     fi
   fi
 
   echo -e "  Starting Ollama as $(whoami)..."
-  ollama serve &>/dev/null &
+  local _ollama_log="/tmp/ollama-studio-$$.log"
+  local _pidfile="/tmp/ollama-studio.pid"
+  ollama serve >"$_ollama_log" 2>&1 &
   local ollama_pid=$!
   disown
 
@@ -340,7 +434,9 @@ ensure_ollama_running() {
       info "Ollama already running"
       return
     fi
-    fail "Ollama process exited immediately. Check 'ollama serve' manually for errors."
+    fail "Ollama process exited immediately."
+    echo -e "    ${DIM}Log: $(tail -3 "$_ollama_log" 2>/dev/null || echo 'no log')${D}"
+    echo -e "    ${DIM}Try running: ${C}ollama serve${D} manually to see errors.${D}"
     return 1
   fi
 
@@ -350,6 +446,8 @@ ensure_ollama_running() {
       OLLAMA_RUNNING=true
       OLLAMA_API_OK=true
       if [ -z "$OLLAMA_URL_IN_USE" ]; then OLLAMA_URL_IN_USE="http://localhost:11434"; fi
+      # Only write PID file after successful health check
+      echo "$ollama_pid" > "$_pidfile"
       info "Ollama started as $(whoami)"
       return
     fi
@@ -469,7 +567,7 @@ show_model_status() {
 
   echo ""
   echo -e "  ${C}Installed Models:${D}"
-  for name in implicitcad-dev implicitcad-9b; do
+  for name in implicitcad-dev implicitcad-9b implicitcad-27b; do
     if echo "$models" | grep -q "$name"; then
       echo -e "    ${G}✓${D} $name"
     else
@@ -491,10 +589,15 @@ start_studio() {
     fail "Docker not found. Install from https://docs.docker.com/get-docker/"
     return
   fi
+  if ! $DOCKER_DAEMON_OK; then
+    fail "Docker daemon is not running. Start Docker Desktop or run 'dockerd' first."
+    return
+  fi
   if [ -z "$COMPOSE" ]; then
     fail "docker compose not found."
     return
   fi
+  require_supported_versions || return
 
   # Create workspace
   export WORKSPACE_DIR="${WORKSPACE_DIR:-${SCRIPT_DIR}/_workspace}"
@@ -547,10 +650,21 @@ stop_all() {
   fi
   info "Docker services stopped"
 
-  # Stop Ollama if we started it
-  if pgrep -x ollama &>/dev/null; then
-    pkill -x ollama 2>/dev/null || true
-    info "Ollama stopped"
+  # Stop only the Ollama process we started (don't kill user's other Ollama instances)
+  local _pidfile="/tmp/ollama-studio.pid"
+  if [ -f "$_pidfile" ]; then
+    local _pid
+    _pid=$(cat "$_pidfile" 2>/dev/null)
+    if [ -n "$_pid" ] && kill -0 "$_pid" 2>/dev/null; then
+      # Verify the PID is actually an ollama process before killing
+      local _proc_name
+      _proc_name=$(ps -p "$_pid" -o comm= 2>/dev/null || true)
+      if [ "$_proc_name" = "ollama" ]; then
+        kill "$_pid" 2>/dev/null || true
+        info "Ollama stopped (pid $_pid)"
+      fi
+    fi
+    rm -f "$_pidfile"
   fi
   echo ""
 }
@@ -579,18 +693,23 @@ setup_first_time() {
   # Step 1: Install Ollama
   echo -e "  ${C}Step 1/2:${D} Ollama..."
   install_ollama
+  require_supported_versions || return
   ensure_ollama_running || return
 
   # Step 2: Verify Docker
   echo ""
   echo -e "  ${C}Step 2/2:${D} Docker..."
-  if $DOCKER_OK; then
-    info "Docker found (${DOCKER_VER})"
-  else
+  if ! $DOCKER_OK; then
     fail "Docker not found. Install from https://docs.docker.com/get-docker/"
     echo -e "    ${DIM}Docker is required to run Studio services.${D}"
     return
   fi
+  if ! $DOCKER_DAEMON_OK; then
+    fail "Docker is installed but the daemon is not running."
+    echo -e "    ${DIM}Start Docker Desktop or run: ${C}dockerd${D}"
+    return
+  fi
+  info "Docker found (${DOCKER_VER})"
   if [ -n "$COMPOSE" ]; then
     info "Docker Compose found"
   else
@@ -602,7 +721,7 @@ setup_first_time() {
   info "Setup complete!"
   echo ""
   echo -e "  ${W}Next steps:${D}"
-  echo -e "  1. Download a model — pick ${C}Add 9B${D} (recommended) or ${C}Add 0.8B${D} (test) from the menu"
+  echo -e "  1. Download a model — pick ${C}Add 9B${D} (recommended), ${C}Add 27B${D} (advanced), or ${C}Add 0.8B${D} (test)"
   echo -e "  2. Start Studio — launches Docker services and opens browser"
 }
 
@@ -614,6 +733,7 @@ setup_0_8b() {
   echo ""
 
   ensure_ollama_running || return
+  require_supported_versions || return
 
   # Step 1: Pull base model (skip if already pulled)
   echo -e "  ${C}Step 1/2:${D} Pulling base model (qwen3.5:0.8b, ~1GB)..."
@@ -649,6 +769,7 @@ setup_9b() {
   echo ""
 
   ensure_ollama_running || return
+  require_supported_versions || return
 
   # Step 1: Pull merged model from HuggingFace
   echo -e "  ${C}Step 1/2:${D} Pulling model from HuggingFace (~6GB)..."
@@ -690,6 +811,343 @@ setup_9b() {
   echo -e "  3. Start chatting — the fine-tuned 9B model generates OpenSCAD code"
 }
 
+# Setup advanced 27B model (merged — pulled directly from HuggingFace)
+setup_27b() {
+  echo ""
+  echo -e "  ${W}27B Advanced Model Setup${D}"
+  echo -e "  ${DIM}Downloads the fine-tuned 27B model (~15.4GB) and creates implicitcad-27b.${D}"
+  echo -e "  ${DIM}Recommended: 32GB+ RAM. This is a large download and may take a while.${D}"
+  echo ""
+
+  ensure_ollama_running || return
+  require_supported_versions || return
+
+  echo -e "  ${C}Step 1/2:${D} Pulling model from HuggingFace (~15.4GB)..."
+  echo -e "  ${DIM}Large download — if it times out, it will resume where it left off on retry.${D}"
+  if has_ollama_model "hf.co/ziaoliu/Qwen3.5-27B-OpenSCAD-Instruct"; then
+    info "Model already pulled — skipping"
+  else
+    local attempt
+    for attempt in 1 2 3; do
+      if pull_model "hf.co/ziaoliu/Qwen3.5-27B-OpenSCAD-Instruct"; then
+        break
+      fi
+      if [ "$attempt" -lt 3 ]; then
+        warn "Download interrupted (attempt $attempt/3). Retrying — Ollama resumes partial downloads..."
+        sleep 2
+      else
+        fail "Failed after 3 attempts. Check your internet connection and try again."
+        echo -e "    ${DIM}You can also try manually: ${C}ollama pull hf.co/ziaoliu/Qwen3.5-27B-OpenSCAD-Instruct${D}"
+        return
+      fi
+    done
+  fi
+
+  echo ""
+  echo -e "  ${C}Step 2/2:${D} Creating app model (implicitcad-27b)..."
+  if has_ollama_model "implicitcad-27b"; then
+    warn "implicitcad-27b already exists — recreating"
+  fi
+  create_model "implicitcad-27b" "./ollama/Modelfile.27b"
+
+  echo ""
+  info "27B model ready!"
+  echo ""
+  echo -e "  ${W}How to use it:${D}"
+  echo -e "  1. Start Studio from the menu"
+  echo -e "  2. In the AI Chat panel, select ${C}implicitcad-27b${D}"
+  echo -e "  3. Start chatting — this is the largest local fine-tuned model"
+}
+
+# ── Advanced Tool Functions ─────────────────────────────────────────────────
+
+require_service_running() {
+  local service="${1:-}"
+  case "$service" in
+    engine) service="implicitcad" ;;
+  esac
+
+  if ! $COMPOSE ps --status running 2>/dev/null | grep -Eq "(^|[[:space:]])${service}([[:space:]]|$)"; then
+    fail "${service} is not running. Start Studio first."
+    return 1
+  fi
+}
+
+do_exec() {
+  local service="${1:-}"
+
+  case "$service" in
+    engine) service="implicitcad" ;;
+    server|implicitcad|frontend|"") ;;
+    *)
+      warn "Unknown service: $service"
+      return 1
+      ;;
+  esac
+
+  if [ -z "$service" ]; then
+    echo "Select container to enter:"
+    echo -e "  ${W}1)${D} server      — admesh, extopenscad, node (${C}recommended${D})"
+    echo -e "  ${W}2)${D} engine      — extopenscad helper container"
+    echo -e "  ${W}3)${D} frontend    — nginx config and logs"
+    read -rp "  Choice [1]: " choice
+    case "${choice:-1}" in
+      1|server)     service="server" ;;
+      2|engine)     service="implicitcad" ;;
+      3|frontend)   service="frontend" ;;
+      *) warn "Invalid choice"; return ;;
+    esac
+  fi
+
+  require_service_running "$service" || return 1
+
+  local shell="/bin/bash"
+  local workdir="/"
+  case "$service" in
+    server)
+      workdir="/workspace"
+      echo -e "  ${G}Entering server container${D}"
+      echo -e "  ${DIM}Tools: \$EXTOPENSCAD, admesh, node${D}"
+      echo -e "  ${DIM}Files: /workspace${D}"
+      ;;
+    implicitcad)
+      workdir="/app"
+      echo -e "  ${G}Entering ImplicitCAD engine container${D}"
+      echo -e "  ${DIM}Tools: extopenscad${D}"
+      echo -e "  ${DIM}Purpose: shared binary volume + compile helper${D}"
+      ;;
+    frontend)
+      shell="/bin/sh"
+      echo -e "  ${G}Entering frontend container${D}"
+      echo -e "  ${DIM}Config: /etc/nginx/conf.d/${D}"
+      echo -e "  ${DIM}Logs:   /var/log/nginx/${D}"
+      ;;
+  esac
+  echo -e "  ${DIM}Type 'exit' to return.${D}"
+  echo ""
+
+  $COMPOSE exec -w "$workdir" "$service" "$shell"
+}
+
+do_logs() {
+  local service="${1:-}"
+  case "$service" in
+    engine) service="implicitcad" ;;
+  esac
+  echo -e "  ${DIM}Following logs (Ctrl+C to stop)...${D}"
+  if [ -n "$service" ]; then
+    $COMPOSE logs -f "$service"
+  else
+    $COMPOSE logs -f
+  fi
+}
+
+do_test() {
+  local pass=0
+  local fail_count=0
+
+  require_service_running implicitcad || return 1
+
+  echo ""
+  echo -e "  ${W}ImplicitCAD Smoke Tests${D}"
+  echo -e "  ${DIM}══════════════════════════════════════${D}"
+  echo ""
+
+  _test_compile() {
+    local name="$1"
+    local code="$2"
+    local start_time=$(date +%s%N 2>/dev/null || date +%s)
+
+    printf "  Testing: %-30s " "$name"
+    set +e
+    echo "$code" | $COMPOSE exec -T implicitcad sh -c 'cat > /tmp/test.scad && extopenscad -r 2 --fopenscad-compat /tmp/test.scad -o /tmp/test.stl 2>&1' >/dev/null 2>&1
+    local exit_code=$?
+    set -e
+
+    local end_time=$(date +%s%N 2>/dev/null || date +%s)
+    local elapsed="?"
+    if [ "${#start_time}" -gt 10 ]; then
+      elapsed=$(( (end_time - start_time) / 1000000 ))ms
+    fi
+
+    if [ $exit_code -eq 0 ]; then
+      local size=$($COMPOSE exec -T implicitcad stat -c%s /tmp/test.stl 2>/dev/null || echo "0")
+      if [ "$size" -gt 0 ] 2>/dev/null; then
+        echo -e "${G}PASS${D} (${elapsed}, ${size} bytes)"
+        pass=$((pass + 1))
+      else
+        echo -e "${R}FAIL${D} (empty STL)"
+        fail_count=$((fail_count + 1))
+      fi
+    else
+      echo -e "${R}FAIL${D} (exit code $exit_code)"
+      fail_count=$((fail_count + 1))
+    fi
+  }
+
+  _test_compile "Simple cube" "cube([10, 10, 10]);"
+  _test_compile "Sphere" "sphere(r = 15);"
+  _test_compile "Cylinder with rotation" 'union() { cube([10,10,20], center=true); rotate([90,0,0]) cylinder(h=30, r=5, center=true); }'
+  _test_compile "Boolean difference" 'difference() { cube([20,20,20], center=true); sphere(r=13); }'
+  _test_compile "Parametric" 'w=30; h=20; difference() { cube([w,w,h], center=true); cylinder(r=w/4, h=h+1, center=true); }'
+
+  echo ""
+  echo -e "  Results: ${G}$pass passed${D}, ${R}$fail_count failed${D}"
+
+  if [ $fail_count -gt 0 ]; then return 1; fi
+}
+
+do_compile() {
+  local input=""
+  local output=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -o)
+        if [ -z "${2:-}" ]; then
+          fail "Missing value for -o"
+          return 1
+        fi
+        output="$2"
+        shift 2
+        ;;
+      -h|--help)
+        echo "Usage: ./studio.sh compile <file.scad> [-o output.stl]"
+        echo "       echo 'cube(10);' | ./studio.sh compile - [-o output.stl]"
+        return 0
+        ;;
+      *)
+        if [ -z "$input" ]; then
+          input="$1"
+          shift
+        else
+          fail "Unexpected argument: $1"
+          return 1
+        fi
+        ;;
+    esac
+  done
+
+  if [ -z "$input" ]; then
+    echo "Usage: ./studio.sh compile <file.scad> [-o output.stl]"
+    echo "       echo 'cube(10);' | ./studio.sh compile -"
+    return 1
+  fi
+
+  if [ "$input" != "-" ] && [ ! -f "$input" ]; then
+    fail "Input file not found: $input"
+    return 1
+  fi
+
+  require_service_running implicitcad || return 1
+
+  if [ "$input" = "-" ]; then
+    # Read from stdin
+    local tmpfile
+    tmpfile=$(mktemp "${TMPDIR:-/tmp}/icad_XXXXXX.scad")
+    cat > "$tmpfile"
+    docker cp "$tmpfile" "implicitcad-engine:/tmp/stdin.scad"
+    $COMPOSE exec -T implicitcad extopenscad -r 2 --fopenscad-compat /tmp/stdin.scad -o /tmp/output.stl
+    output="${output:-./output.stl}"
+    docker cp "implicitcad-engine:/tmp/output.stl" "$output"
+    info "Output: $output"
+    rm -f "$tmpfile"
+  else
+    [ -z "$output" ] && output="${input%.scad}.stl"
+    docker cp "$input" "implicitcad-engine:/tmp/input.scad"
+    $COMPOSE exec -T implicitcad extopenscad -r 2 --fopenscad-compat /tmp/input.scad -o /tmp/output.stl
+    docker cp "implicitcad-engine:/tmp/output.stl" "$output"
+    info "Output: $output"
+  fi
+}
+
+do_status() {
+  show_service_status
+
+  echo -e "  ${W}Health Checks${D}"
+  echo -e "  ${DIM}──────────────────────────────────────${D}"
+  echo ""
+
+  # Server health
+  local server_port
+  server_port=$($COMPOSE port server 4000 2>/dev/null | awk -F: '{print $NF}' || echo "")
+  if [ -n "$server_port" ]; then
+    if curl -sf "http://localhost:${server_port}/api/health" >/dev/null 2>&1; then
+      info "Server API: healthy (port $server_port)"
+    else
+      fail "Server API: not responding (port $server_port)"
+    fi
+  else
+    fail "Server API: not running"
+  fi
+
+  # Frontend
+  local frontend_port
+  frontend_port=$($COMPOSE port frontend 3000 2>/dev/null | awk -F: '{print $NF}' || echo "")
+  if [ -n "$frontend_port" ]; then
+    if curl -sf "http://localhost:${frontend_port}" >/dev/null 2>&1; then
+      info "Frontend: reachable (port $frontend_port)"
+    else
+      fail "Frontend: not responding (port $frontend_port)"
+    fi
+  else
+    fail "Frontend: not running"
+  fi
+
+  # Engine
+  if $COMPOSE ps --status running implicitcad 2>/dev/null | grep -q implicitcad; then
+    if $COMPOSE exec -T implicitcad extopenscad --help >/dev/null 2>&1; then
+      info "ImplicitCAD engine: ready (extopenscad available)"
+    else
+      fail "ImplicitCAD engine: container running but extopenscad unavailable"
+    fi
+  else
+    fail "ImplicitCAD engine: not running"
+  fi
+
+  echo ""
+}
+
+advanced_tools_menu() {
+  local choice
+  while true; do
+    echo ""
+    echo -e "  ${W}Advanced Tools${D}"
+    echo -e "  ${DIM}──────────────────────────────────────${D}"
+    echo ""
+    echo -e "  ${W} 1)${D} ${B}Shell into server${D}     admesh, extopenscad, node, /workspace"
+    echo -e "  ${W} 2)${D} ${B}Shell into engine${D}     extopenscad helper container"
+    echo -e "  ${W} 3)${D} ${B}Tail service logs${D}     Follow Docker Compose logs"
+    echo -e "  ${W} 4)${D} ${B}Run smoke tests${D}      5 compilation tests with timing"
+    echo -e "  ${W} 5)${D} ${B}Compile .scad file${D}   Compile a file via Docker"
+    echo -e "  ${W} q)${D} Back to main menu"
+    echo ""
+    read -rp "  Select [1-5, q]: " choice
+
+    echo ""
+    case "$choice" in
+      1) do_exec server ;;
+      2) do_exec implicitcad ;;
+      3) do_logs ;;
+      4) do_test ;;
+      5)
+        local file
+        read -rp "  Path to .scad file: " file
+        if [ -n "$file" ]; then
+          do_compile "$file"
+        else
+          warn "No file specified"
+        fi
+        ;;
+      q|Q) return ;;
+      *) warn "Invalid option" ;;
+    esac
+
+    echo ""
+    read -rp "  Press Enter to continue..." _
+  done
+}
+
 # ── Non-Interactive Mode ─────────────────────────────────────────────────────
 
 if [ $# -gt 0 ]; then
@@ -708,15 +1166,48 @@ if [ $# -gt 0 ]; then
     --setup-9b)
       setup_9b
       ;;
+    --setup-27b)
+      setup_27b
+      ;;
     --stop)
       stop_all
       ;;
     --status)
-      show_service_status
+      do_status
       show_model_status
       ;;
+    --test|test)
+      do_test
+      ;;
+    compile)
+      shift
+      do_compile "$@"
+      ;;
+    run)
+      shift
+      input="$1"
+      if [ -z "$input" ]; then echo "Usage: ./studio.sh run <file.scad>"; exit 1; fi
+      require_service_running implicitcad || exit 1
+      docker cp "$input" "implicitcad-engine:/tmp/input.scad"
+      $COMPOSE exec -T implicitcad extopenscad -r 2 --fopenscad-compat /tmp/input.scad -o /tmp/output.stl
+      info "Compiled successfully."
+      $COMPOSE exec -T implicitcad ls -la /tmp/output.stl
+      ;;
+    exec)
+      shift
+      do_exec "$@"
+      ;;
+    logs)
+      shift
+      do_logs "$@"
+      ;;
     *)
-      echo "Usage: ./studio.sh [--install|--start|--setup-9b|--setup-0.8b|--stop|--status]"
+      echo "Usage: ./studio.sh [--install|--start|--setup-9b|--setup-27b|--setup-0.8b|--stop|--status]"
+      echo "       ./studio.sh test                     Run smoke tests"
+      echo "       ./studio.sh compile <file.scad>      Compile a .scad file to STL"
+      echo "       ./studio.sh run <file.scad>          Compile and show info"
+      echo "       ./studio.sh exec [service]           Shell into a container"
+      echo "       ./studio.sh logs [service]           Tail Docker Compose logs"
       exit 1
       ;;
   esac
@@ -731,7 +1222,9 @@ MENU_LABELS=(
   "Start Studio"
   "Add 0.8B (test)"
   "Add 9B (production)"
+  "Add 27B (advanced)"
   "View status"
+  "Advanced tools"
   "Stop all services"
   "Full rebuild"
   "Quit"
@@ -742,7 +1235,9 @@ MENU_SECTIONS=(
   "Launch"
   "Download Models"
   ""
+  ""
   "Manage"
+  ""
   ""
   ""
   ""
@@ -760,7 +1255,11 @@ build_menu_state() {
   local need_docker=""
   local need_ollama=""
 
-  if ! $DOCKER_OK; then need_docker="${R}✗ Install Docker first${D}"; fi
+  if ! $DOCKER_OK; then
+    need_docker="${R}✗ Install Docker first${D}"
+  elif ! $DOCKER_DAEMON_OK; then
+    need_docker="${R}✗ Start Docker daemon${D}"
+  fi
   if ! $OLLAMA_OK; then need_ollama="${R}✗ Install Ollama first${D}"; fi
 
   # 0: First-time setup — needs Docker
@@ -807,31 +1306,53 @@ build_menu_state() {
     MENU_DISABLED[3]=""
   fi
 
-  # 4: View status — always available
-  MENU_DESCS[4]="Show Docker services, Ollama, and installed models"
-  MENU_TAGS[4]=""
-  MENU_DISABLED[4]=""
+  # 4: Add 27B — needs Ollama
+  if ! $OLLAMA_OK; then
+    MENU_DESCS[4]="Largest fine-tuned model (~15.4GB, 32GB+ RAM)"
+    MENU_TAGS[4]="$need_ollama"
+    MENU_DISABLED[4]="1"
+  else
+    MENU_DESCS[4]="Largest fine-tuned model (~15.4GB, 32GB+ RAM)"
+    MENU_TAGS[4]="${Y}advanced${D}"
+    MENU_DISABLED[4]=""
+  fi
 
-  # 5: Stop all — always available
-  MENU_DESCS[5]="Shut down Docker services and Ollama"
+  # 5: View status — always available
+  MENU_DESCS[5]="Show Docker services, Ollama, and installed models"
   MENU_TAGS[5]=""
   MENU_DISABLED[5]=""
 
-  # 6: Full rebuild — needs Docker
+  # 6: Advanced tools — needs Docker
   if [ -n "$need_docker" ]; then
-    MENU_DESCS[6]="Rebuild all containers from scratch (slow)"
+    MENU_DESCS[6]="Shell into containers, run tests, compile files"
     MENU_TAGS[6]="$need_docker"
     MENU_DISABLED[6]="1"
   else
-    MENU_DESCS[6]="Rebuild all containers from scratch (slow)"
+    MENU_DESCS[6]="Shell into containers, run tests, compile files"
     MENU_TAGS[6]=""
     MENU_DISABLED[6]=""
   fi
 
-  # 7: Quit — always available
-  MENU_DESCS[7]=""
+  # 7: Stop all — always available
+  MENU_DESCS[7]="Shut down Docker services and Ollama"
   MENU_TAGS[7]=""
   MENU_DISABLED[7]=""
+
+  # 8: Full rebuild — needs Docker
+  if [ -n "$need_docker" ]; then
+    MENU_DESCS[8]="Rebuild all containers from scratch (slow)"
+    MENU_TAGS[8]="$need_docker"
+    MENU_DISABLED[8]="1"
+  else
+    MENU_DESCS[8]="Rebuild all containers from scratch (slow)"
+    MENU_TAGS[8]=""
+    MENU_DISABLED[8]=""
+  fi
+
+  # 9: Quit — always available
+  MENU_DESCS[9]=""
+  MENU_TAGS[9]=""
+  MENU_DISABLED[9]=""
 }
 
 # Row offsets (static — computed once)
@@ -918,7 +1439,7 @@ run_selection() {
 
   # Block disabled items
   if [ -n "${MENU_DISABLED[$sel]}" ]; then
-    clear
+    clear 2>/dev/null || true
     echo ""
     local label="${MENU_LABELS[$sel]}"
     if ! $DOCKER_OK && ! $OLLAMA_OK; then
@@ -928,6 +1449,9 @@ run_selection() {
     elif ! $DOCKER_OK; then
       fail "${label} requires Docker."
       echo -e "    Install: ${C}https://docs.docker.com/get-docker/${D}"
+    elif ! $DOCKER_DAEMON_OK; then
+      fail "${label} requires the Docker daemon to be running."
+      echo -e "    Start Docker Desktop or run: ${C}dockerd${D}"
     elif ! $OLLAMA_OK; then
       fail "${label} requires Ollama."
       echo -e "    Install: ${C}brew install ollama${D} or ${C}https://ollama.com/download${D}"
@@ -938,17 +1462,19 @@ run_selection() {
   fi
 
   # Clear screen before running commands — avoids garbled ANSI positioning
-  clear
+  clear 2>/dev/null || true
   echo ""
   case "$sel" in
     0) setup_first_time ;;
     1) ensure_ollama_running; start_studio ;;
     2) setup_0_8b ;;
     3) setup_9b ;;
-    4) show_service_status; show_model_status ;;
-    5) stop_all ;;
-    6) full_rebuild ;;
-    7) echo -e "  ${DIM}Goodbye.${D}"; echo ""; exit 0 ;;
+    4) setup_27b ;;
+    5) show_service_status; show_model_status ;;
+    6) advanced_tools_menu ;;
+    7) stop_all ;;
+    8) full_rebuild ;;
+    9) echo -e "  ${DIM}Goodbye.${D}"; echo ""; exit 0 ;;
   esac
   echo ""
   read -p "  Press Enter to continue..." _

@@ -3,6 +3,8 @@ import { FolderOpen, Folder, File, ChevronRight, ChevronDown, Info } from 'lucid
 import { useFileTreeStore } from '../stores/fileTreeStore'
 import { ContextMenu, type ContextMenuItem } from './ContextMenu'
 
+const TREE_DRAG_MIME = 'application/x-implicitcad-tree-entry'
+
 function getFileColor(name: string): string {
   const ext = name.split('.').pop()?.toLowerCase()
   switch (ext) {
@@ -72,8 +74,11 @@ export function FileTree() {
   const setCreatingEntry = useFileTreeStore((s) => s.setCreatingEntry)
   const createFile = useFileTreeStore((s) => s.createFile)
   const createFolder = useFileTreeStore((s) => s.createFolder)
+  const moveEntry = useFileTreeStore((s) => s.moveEntry)
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
+  const [dragOverPath, setDragOverPath] = useState<string | null>(null)
+  const [draggingPath, setDraggingPath] = useState<string | null>(null)
   const dirtyPaths = new Set(openFiles.filter((tab) => tab.savedContent !== tab.draftContent).map((tab) => tab.path))
   const openPaths = new Set(openFiles.map((tab) => tab.path))
 
@@ -140,6 +145,8 @@ export function FileTree() {
   }
 
   const creatingParentPath = creatingEntry?.parentPath ?? ''
+  const readDraggedPath = (e: React.DragEvent) =>
+    e.dataTransfer.getData(TREE_DRAG_MIME) || e.dataTransfer.getData('text/plain')
 
   return (
     <div className="flex flex-col h-full">
@@ -150,7 +157,29 @@ export function FileTree() {
       </div>
 
       {/* File list */}
-      <div className="flex-1 overflow-y-auto py-1">
+      <div
+        className={`flex-1 overflow-y-auto py-1 transition-all duration-200 ease-out ${
+          dragOverPath === '' ? 'bg-accent-dim/40 shadow-[inset_0_0_16px_var(--color-accent-dim)]' : ''
+        }`}
+        onDragOver={(e) => {
+          if (!draggingPath) return
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'move'
+          setDragOverPath('')
+        }}
+        onDragLeave={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node)) return
+          if (dragOverPath === '') setDragOverPath(null)
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setDragOverPath(null)
+          setDraggingPath(null)
+          const sourcePath = readDraggedPath(e)
+          if (sourcePath) moveEntry(sourcePath, '')
+        }}
+      >
         {creatingEntry && creatingParentPath === '' && (
           <InlineInput
             depth={0}
@@ -166,13 +195,48 @@ export function FileTree() {
           const isOpen = openPaths.has(entry.path)
           const isDirty = dirtyPaths.has(entry.path)
 
+          const isDragOver = dragOverPath === entry.path && isDir
+
           return (
             <div key={entry.path}>
               <button
+                draggable
+                onDragStart={(e) => {
+                  setDraggingPath(entry.path)
+                  e.dataTransfer.effectAllowed = 'move'
+                  e.dataTransfer.setData(TREE_DRAG_MIME, entry.path)
+                  e.dataTransfer.setData('text/plain', entry.path)
+                }}
+                onDragEnd={() => { setDraggingPath(null); setDragOverPath(null) }}
+                onDragOver={(e) => {
+                  if (!draggingPath || draggingPath === entry.path) return
+                  e.preventDefault()
+                  e.stopPropagation()
+                  e.dataTransfer.dropEffect = 'move'
+                  // Highlight the target directory (or the parent dir for files)
+                  const targetDir = isDir ? entry.path : entry.path.split('/').slice(0, -1).join('/')
+                  if (dragOverPath !== targetDir) setDragOverPath(targetDir)
+                }}
+                onDragLeave={(e) => {
+                  if (e.currentTarget.contains(e.relatedTarget as Node)) return
+                  setDragOverPath(null)
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setDragOverPath(null)
+                  setDraggingPath(null)
+                  const sourcePath = readDraggedPath(e)
+                  if (!sourcePath) return
+                  const targetDir = isDir ? entry.path : entry.path.split('/').slice(0, -1).join('/')
+                  moveEntry(sourcePath, targetDir)
+                }}
                 onClick={() => isDir ? toggleDir(entry.path) : openFile(entry.path)}
                 onContextMenu={(e) => handleContextMenu(e, entry)}
-                className={`flex items-center gap-1.5 w-full text-left text-[13px] py-1 pr-2 hover:bg-bg-hover transition-colors ${
-                  isActive ? 'bg-accent-dim text-accent' : isOpen ? 'text-text-primary' : 'text-text-secondary'
+                className={`flex items-center gap-1.5 w-full text-left text-[13px] py-1 pr-2 transition-all duration-150 ease-out ${
+                  isDragOver ? 'bg-accent-dim/70 shadow-[inset_3px_0_0_var(--color-accent)] scale-[1.01]' :
+                  draggingPath === entry.path ? 'opacity-30 scale-[0.97]' :
+                  isActive ? 'bg-accent-dim text-accent' : isOpen ? 'text-text-primary hover:bg-bg-hover' : 'text-text-secondary hover:bg-bg-hover'
                 }`}
                 style={{ paddingLeft: `${12 + entry.depth * 16}px` }}
                 title={entry.path}

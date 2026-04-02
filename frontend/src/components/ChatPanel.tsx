@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Copy, GitCompareArrows, ArrowDown, KeyRound, Plus, X as XIcon, MessageSquare } from 'lucide-react'
+import { Send, Copy, GitCompareArrows, ArrowDown, KeyRound, Plus, X as XIcon, MessageSquare, RefreshCw, ChevronDown } from 'lucide-react'
 import { useChatStore, type ChatMessage } from '../stores/chatStore'
 import { useEditorStore } from '../stores/editorStore'
 import { ApiKeysDialog } from './ApiKeysDialog'
@@ -9,6 +9,116 @@ const PROVIDERS = [
   { value: 'openai', label: 'OpenAI' },
   { value: 'anthropic', label: 'Claude' },
 ]
+
+function CustomDropdown({
+  items, value, disabled, emptyLabel, onSelect, searchable, onRefresh, refreshing,
+}: {
+  items: { value: string; label: string }[]
+  value: string | null
+  disabled?: boolean
+  emptyLabel?: string
+  onSelect: (value: string) => void
+  searchable?: boolean
+  onRefresh?: () => void
+  refreshing?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  useEffect(() => {
+    if (open && searchable) {
+      setSearch('')
+      setTimeout(() => searchRef.current?.focus(), 0)
+    }
+  }, [open, searchable])
+
+  const filtered = searchable
+    ? items.filter(i => i.label.toLowerCase().includes(search.toLowerCase()))
+    : items
+
+  const activeItem = items.find(i => i.value === value)
+  const displayLabel = activeItem?.label || emptyLabel || 'Select...'
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => !disabled && setOpen(!open)}
+        disabled={disabled}
+        className="flex items-center gap-1.5 text-xs bg-bg-base border border-border-default rounded-md px-2.5 py-1.5 text-text-primary outline-none transition-all duration-150 hover:bg-bg-raised hover:border-border-strong focus-visible:border-ai focus-visible:ring-2 focus-visible:ring-ai-dim cursor-pointer max-w-[200px] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <span className="truncate">{displayLabel}</span>
+        <ChevronDown size={10} className={`shrink-0 text-text-muted transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+6px)] min-w-[var(--trigger-w,8rem)] w-max max-w-72 bg-white dark:bg-bg-raised border border-border-default rounded-lg shadow-lg z-[var(--z-dropdown)] overflow-hidden">
+          {/* Search bar */}
+          {searchable && (
+            <div className="flex items-center gap-1.5 px-2.5 pt-4 border-b border-border-subtle">
+              <input
+                ref={searchRef}
+                type="text"
+                autoComplete="off"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search..."
+                className="flex-1 text-xs bg-transparent text-text-primary py-2 outline-none placeholder:text-text-faint border-none ring-0 focus:ring-2 focus:ring-accent/40 rounded-sm transition-shadow appearance-none"
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setOpen(false)
+                  if (e.key === 'Enter' && filtered.length === 1) {
+                    onSelect(filtered[0].value)
+                    setOpen(false)
+                  }
+                }}
+              />
+              {onRefresh && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRefresh() }}
+                  disabled={refreshing}
+                  title="Refresh"
+                  className="p-0.5 rounded text-text-muted hover:text-text-primary transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw size={11} className={refreshing ? 'animate-spin' : ''} />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Items */}
+          <div className="max-h-52 overflow-y-auto overscroll-contain py-1">
+            {filtered.length === 0 && (
+              <div className="px-3 py-2.5 text-xs text-text-muted">{search ? 'No matches' : emptyLabel || 'No options'}</div>
+            )}
+            {filtered.map(item => (
+              <button
+                key={item.value}
+                onClick={() => { onSelect(item.value); setOpen(false) }}
+                className={`w-full text-left px-3 py-1.5 text-xs transition-colors truncate ${
+                  item.value === value
+                    ? 'bg-accent/10 text-accent font-medium'
+                    : 'text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function ChatPanel() {
   const [input, setInput] = useState('')
@@ -43,6 +153,7 @@ export function ChatPanel() {
   const fetchActiveConfig = useChatStore((s) => s.fetchActiveConfig)
   const selectProvider = useChatStore((s) => s.selectProvider)
   const fetchProviderStatus = useChatStore((s) => s.fetchProviderStatus)
+  const providerError = useChatStore((s) => s.providerError)
 
   // Editor state
   const code = useEditorStore((s) => s.code)
@@ -58,14 +169,23 @@ export function ChatPanel() {
     return () => clearInterval(interval)
   }, [fetchActiveConfig, fetchProviderStatus])
 
-  // Fetch available models when provider changes
+  // Fetch available models when provider changes or API key status changes
+  const openaiKeySet = providerStatus?.openaiKeySet
+  const anthropicKeySet = providerStatus?.anthropicKeySet
   useEffect(() => {
     if (!activeProvider) return
     fetch(`/api/providers/models?provider=${activeProvider}`)
       .then(r => r.json())
-      .then(data => setAvailableModels(data.models || []))
-      .catch(() => setAvailableModels([]))
-  }, [activeProvider])
+      .then(data => {
+        const models = data.models || []
+        setAvailableModels(models)
+        // Auto-select first model if none selected and models available
+        if (!activeModel && models.length > 0) {
+          selectProvider(activeProvider, models[0])
+        }
+      })
+      .catch((e) => { useEditorStore.getState().log(`Model fetch failed: ${e instanceof Error ? e.message : e}`, 'warning'); setAvailableModels([]) })
+  }, [activeProvider, openaiKeySet, anthropicKeySet]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleProviderChange = (newProvider: string) => {
     fetch(`/api/providers/models?provider=${newProvider}`)
@@ -73,17 +193,45 @@ export function ChatPanel() {
       .then(data => {
         const models = data.models || []
         setAvailableModels(models)
-        const model = models[0] || ''
-        if (model) selectProvider(newProvider, model)
+        selectProvider(newProvider, models[0] || '')
       })
-      .catch(() => {})
+      .catch(() => {
+        const { log: logMsg, addToast } = useEditorStore.getState()
+        logMsg('Failed to update provider', 'error')
+        addToast('Failed to update provider', 'error')
+      })
   }
 
   const handleModelChange = (newModel: string) => {
     if (activeProvider) selectProvider(activeProvider, newModel)
   }
 
+  const [refreshing, setRefreshing] = useState(false)
+  const refreshModels = () => {
+    const noCloudKey =
+      (activeProvider === 'openai' && !providerStatus?.openaiKeySet) ||
+      (activeProvider === 'anthropic' && !providerStatus?.anthropicKeySet)
+    if (!activeProvider || refreshing || noCloudKey) return
+    setRefreshing(true)
+    fetch(`/api/providers/models?provider=${activeProvider}`)
+      .then(r => r.json())
+      .then(data => {
+        const models = data.models || []
+        setAvailableModels(models)
+        if (!activeModel && models[0]) {
+          selectProvider(activeProvider, models[0])
+        }
+      })
+      .catch(() => {
+        const { log: logMsg, addToast } = useEditorStore.getState()
+        logMsg('Failed to refresh model list', 'warning')
+        addToast('Failed to refresh model list', 'warning')
+      })
+      .finally(() => setRefreshing(false))
+  }
+
   const getStatusIndicator = () => {
+    if (providerError) return { color: 'bg-error', label: providerError }
     if (!providerStatus) return { color: 'bg-text-muted', label: 'Loading...' }
     if (activeProvider === 'ollama') {
       return providerStatus.ollamaReachable
@@ -104,6 +252,9 @@ export function ChatPanel() {
   }
 
   const status = getStatusIndicator()
+  const modelSelectionLocked =
+    (activeProvider === 'openai' && !providerStatus?.openaiKeySet) ||
+    (activeProvider === 'anthropic' && !providerStatus?.anthropicKeySet)
 
   const [isNearBottom, setIsNearBottom] = useState(true)
   const [hasNewMessages, setHasNewMessages] = useState(false)
@@ -210,7 +361,9 @@ export function ChatPanel() {
                   // (prompt echo, thinking text, template artifacts).
                   // Only the final extracted code (data.code on done) is shown to the user.
                 }
-              } catch {}
+              } catch (parseErr) {
+                useEditorStore.getState().log('Stream parse error — skipped malformed event', 'warning')
+              }
             }
           }
         }
@@ -272,29 +425,23 @@ export function ChatPanel() {
   return (
     <div className="flex flex-col h-full bg-bg-base relative">
       {/* Provider bar */}
-      <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-border-default bg-bg-surface shrink-0">
-        <div className="flex items-center gap-2">
-          <select
-            value={activeProvider || ''}
-            onChange={(e) => handleProviderChange(e.target.value)}
-            className="text-xs bg-bg-base border border-border-default rounded-md px-2 py-1 text-text-primary outline-none transition-all duration-150 hover:bg-bg-raised hover:border-border-strong focus-visible:border-ai focus-visible:ring-2 focus-visible:ring-ai-dim cursor-pointer"
-          >
-            {PROVIDERS.map(p => (
-              <option key={p.value} value={p.value}>{p.label}</option>
-            ))}
-          </select>
-          <select
-            value={activeModel || ''}
-            onChange={(e) => handleModelChange(e.target.value)}
-            className="text-xs bg-bg-base border border-border-default rounded-md px-2 py-1 text-text-primary outline-none transition-all duration-150 hover:bg-bg-raised hover:border-border-strong focus-visible:border-ai focus-visible:ring-2 focus-visible:ring-ai-dim cursor-pointer max-w-[160px]"
-          >
-            {availableModels.map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-            {activeModel && !availableModels.includes(activeModel) && (
-              <option value={activeModel}>{activeModel}</option>
-            )}
-          </select>
+      <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-border-default bg-bg-surface shrink-0 overflow-visible relative z-[var(--z-dropdown)]">
+        <div className="flex items-center gap-1.5">
+          <CustomDropdown
+            items={PROVIDERS}
+            value={activeProvider}
+            onSelect={handleProviderChange}
+          />
+          <CustomDropdown
+            items={availableModels.map(m => ({ value: m, label: m }))}
+            value={activeModel}
+            disabled={modelSelectionLocked}
+            emptyLabel={activeProvider === 'ollama' ? 'No models found' : 'Set API key first'}
+            onSelect={handleModelChange}
+            searchable
+            onRefresh={refreshModels}
+            refreshing={refreshing}
+          />
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 text-[11px] text-text-muted">

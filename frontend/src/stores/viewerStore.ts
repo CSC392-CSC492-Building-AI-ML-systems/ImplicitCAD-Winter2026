@@ -32,7 +32,7 @@ interface ViewerState {
   gridXY: boolean
   gridXZ: boolean
   gridYZ: boolean
-  backendMode: 'implicitsnap' | 'docker' | null
+  backendMode: 'docker' | null
   cameraRef: PerspectiveCamera | null
   controlsRef: { target: Vector3; update: () => void } | null
   fnSegments: number | null
@@ -51,7 +51,7 @@ interface ViewerState {
   toggleGridXY: () => void
   toggleGridXZ: () => void
   toggleGridYZ: () => void
-  setBackendMode: (m: 'implicitsnap' | 'docker' | null) => void
+  setBackendMode: (m: 'docker' | null) => void
   setCameraRef: (c: PerspectiveCamera | null) => void
   setControlsRef: (c: { target: Vector3; update: () => void } | null) => void
   setCameraPreset: (preset: 'front' | 'top' | 'iso' | 'reset') => void
@@ -81,7 +81,7 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   cameraRef: null,
   controlsRef: null,
   fnSegments: null,
-  compilerResolution: '2',
+  compilerResolution: '4',
   compatMode: true,
   validation: null,
   modelName: localStorage.getItem('implicitcad-model-name') || 'model',

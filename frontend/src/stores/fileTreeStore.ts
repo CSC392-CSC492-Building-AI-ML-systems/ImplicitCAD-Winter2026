@@ -56,6 +56,7 @@ interface FileTreeState {
   createFile: (parentPath: string, name: string) => Promise<void>
   createFolder: (parentPath: string, name: string) => Promise<void>
   refreshTree: () => Promise<void>
+  moveEntry: (sourcePath: string, targetDirPath: string) => Promise<void>
   setCreatingEntry: (v: { parentPath: string; kind: 'file' | 'directory' } | null) => void
   revealInExplorer: (path?: string) => void
   confirmDiscardPending: () => void
@@ -65,7 +66,7 @@ interface FileTreeState {
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'dist', 'build', '__pycache__', '.next', '.cache'])
 const MAX_DEPTH = 8
-const BINARY_EXTS = new Set(['stl', 'obj', 'png', 'jpg', 'jpeg', 'gif', 'ico', 'woff', 'woff2', 'ttf', 'zip', 'gz', 'pdf'])
+const BINARY_EXTS = new Set(['stl', 'obj', 'png', 'jpg', 'jpeg', 'gif', 'ico', 'woff', 'woff2', 'ttf', 'zip', 'gz', 'pdf', 'rbxm', 'rbxl'])
 
 async function readDirRecursive(
   dirHandle: FileSystemDirectoryHandle,
@@ -139,6 +140,60 @@ function activeTabState(openFiles: OpenFileTab[], activePath: string | null) {
   return {
     activeFileHandle: activeTab?.handle ?? null,
     isDirty: activeTab ? activeTab.savedContent !== activeTab.draftContent : false,
+  }
+}
+
+async function resolveDirectoryHandle(
+  rootHandle: FileSystemDirectoryHandle,
+  path: string,
+) {
+  let dirHandle = rootHandle
+  if (!path) return dirHandle
+  for (const seg of path.split('/')) {
+    dirHandle = await dirHandle.getDirectoryHandle(seg)
+  }
+  return dirHandle
+}
+
+function replacePathPrefix(path: string, fromPath: string, toPath: string) {
+  if (path === fromPath) return toPath
+  if (!path.startsWith(fromPath + '/')) return path
+  return toPath + path.slice(fromPath.length)
+}
+
+async function entryKind(
+  dirHandle: FileSystemDirectoryHandle,
+  name: string,
+): Promise<'file' | 'directory' | null> {
+  for await (const entry of dirHandle.values()) {
+    if (entry.name === name) return entry.kind
+  }
+  return null
+}
+
+async function copyFileHandle(
+  sourceHandle: FileSystemFileHandle,
+  targetDirHandle: FileSystemDirectoryHandle,
+  targetName: string,
+) {
+  const file = await sourceHandle.getFile()
+  const writable = await (await targetDirHandle.getFileHandle(targetName, { create: true })).createWritable()
+  await writable.write(await file.arrayBuffer())
+  await writable.close()
+}
+
+async function copyDirectoryHandle(
+  sourceHandle: FileSystemDirectoryHandle,
+  targetParentHandle: FileSystemDirectoryHandle,
+  targetName: string,
+) {
+  const newDirHandle = await targetParentHandle.getDirectoryHandle(targetName, { create: true })
+  for await (const entry of sourceHandle.values()) {
+    if (entry.kind === 'directory') {
+      await copyDirectoryHandle(entry, newDirHandle, entry.name)
+    } else {
+      await copyFileHandle(entry, newDirHandle, entry.name)
+    }
   }
 }
 
@@ -437,6 +492,76 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
     set({ files })
   },
 
+  moveEntry: async (sourcePath, targetDirPath) => {
+    const { rootHandle } = get()
+    if (!rootHandle) return
+
+    const sourceName = sourcePath.split('/').pop()!
+    const sourceParentPath = sourcePath.split('/').slice(0, -1).join('/')
+    const destinationPath = targetDirPath ? `${targetDirPath}/${sourceName}` : sourceName
+
+    // Don't move into itself or same directory
+    if (targetDirPath === sourceParentPath) return
+    if (targetDirPath.startsWith(sourcePath + '/')) return
+    if (destinationPath === sourcePath) return
+
+    try {
+      const sourceParentHandle = await resolveDirectoryHandle(rootHandle, sourceParentPath)
+      const targetDirHandle = await resolveDirectoryHandle(rootHandle, targetDirPath)
+
+      // Get source entry
+      const sourceEntry = get().files.find(f => f.path === sourcePath)
+      if (!sourceEntry) return
+      const conflictKind = await entryKind(targetDirHandle, sourceName)
+      if (conflictKind) {
+        useEditorStore.getState().log(`Cannot move ${sourceName}: destination already has a ${conflictKind} with that name`, 'warning')
+        useEditorStore.getState().addToast('Destination already contains an entry with that name', 'warning')
+        return
+      }
+
+      if (sourceEntry.kind === 'file') {
+        const sourceFileHandle = await sourceParentHandle.getFileHandle(sourceName)
+        await copyFileHandle(sourceFileHandle, targetDirHandle, sourceName)
+        await sourceParentHandle.removeEntry(sourceName)
+      } else {
+        const sourceDirHandle = await sourceParentHandle.getDirectoryHandle(sourceName)
+        await copyDirectoryHandle(sourceDirHandle, targetDirHandle, sourceName)
+        await sourceParentHandle.removeEntry(sourceName, { recursive: true })
+      }
+
+      const files = await readDirRecursive(rootHandle, '', 0)
+      set((state) => {
+        const handleByPath = new Map(files.map((entry) => [entry.path, entry.handle]))
+        const openFiles = state.openFiles.map((tab) => {
+          const nextPath = replacePathPrefix(tab.path, sourcePath, destinationPath)
+          if (nextPath === tab.path) return tab
+          const nextHandle = handleByPath.get(nextPath)
+          return nextHandle
+            ? { ...tab, path: nextPath, name: nextPath.split('/').pop() || tab.name, handle: nextHandle as FileSystemFileHandle }
+            : tab
+        })
+        const activeFile = state.activeFile ? replacePathPrefix(state.activeFile, sourcePath, destinationPath) : state.activeFile
+        const expandedDirs = new Set(
+          [...state.expandedDirs].map((path) => replacePathPrefix(path, sourcePath, destinationPath)),
+        )
+        if (targetDirPath) expandedDirs.add(targetDirPath)
+        if (sourceEntry.kind === 'directory') expandedDirs.add(destinationPath)
+
+        return {
+          files,
+          openFiles,
+          activeFile,
+          expandedDirs,
+          ...activeTabState(openFiles, activeFile),
+        }
+      })
+      useEditorStore.getState().log(`Moved ${sourceName} to ${targetDirPath || 'root'}`, 'success')
+    } catch (e) {
+      useEditorStore.getState().log(`Failed to move file: ${e instanceof Error ? e.message : e}`, 'error')
+      useEditorStore.getState().addToast('Failed to move file', 'error')
+    }
+  },
+
   setCreatingEntry: (v) => set({ creatingEntry: v }),
 
   revealInExplorer: (path) => {
@@ -494,7 +619,10 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
             const writable = await tab.handle.createWritable()
             await writable.write(content)
             await writable.close()
-          } catch {}
+          } catch (e) {
+            useEditorStore.getState().log(`Failed to save file: ${e instanceof Error ? e.message : e}`, 'error')
+            useEditorStore.getState().addToast('Failed to save some files', 'error')
+          }
         }
       }
       set({

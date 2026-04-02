@@ -11,6 +11,7 @@ const levelColor = {
 
 export function OutputConsole() {
   const logs = useEditorStore((s) => s.logs)
+  const clearUnreadErrors = useEditorStore((s) => s.clearUnreadErrors)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isNearBottom, setIsNearBottom] = useState(true)
   const [hasNewLogs, setHasNewLogs] = useState(false)
@@ -22,6 +23,10 @@ export function OutputConsole() {
     setIsNearBottom(near)
     if (near) setHasNewLogs(false)
   }, [])
+
+  useEffect(() => {
+    clearUnreadErrors()
+  }, [logs.length, clearUnreadErrors])
 
   useEffect(() => {
     if (isNearBottom) {

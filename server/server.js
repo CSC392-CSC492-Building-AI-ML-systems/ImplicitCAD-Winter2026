@@ -16,16 +16,18 @@ const http = require('http')
 const fs = require('fs')
 const path = require('path')
 const url = require('url')
-const { spawn, execSync } = require('child_process')
+const { execSync, spawn } = require('child_process')
 const os = require('os')
 
 const PORT = parseInt(process.env.PORT || '4000', 10)
 const WORKSPACE = process.env.WORKSPACE || path.join(process.cwd(), '_workspace')
-const LLM_COMMAND = process.env.LLM_COMMAND || 'claude -p'
 const EXTOPENSCAD = process.env.EXTOPENSCAD || findExtopenscad()
 const ADMESH = process.env.ADMESH || findAdmesh()
 const COMPILE_TIMEOUT = parseInt(process.env.COMPILE_TIMEOUT || '60', 10) * 1000
+// Docker containers use host.docker.internal (set in docker-compose.yml).
+// Standalone/local dev defaults to localhost.
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434'
+const DEBUG_SERVER = process.env.DEBUG_SERVER === '1'
 let OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
 let ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || ''
 
@@ -37,8 +39,15 @@ function loadProviderConfig() {
   try {
     const data = fs.readFileSync(CONFIG_PATH, 'utf8')
     const config = JSON.parse(data)
-    if (config.provider && config.model) return config
-  } catch {}
+    if (typeof config.provider === 'string' && config.provider) {
+      return {
+        provider: config.provider,
+        model: typeof config.model === 'string' ? config.model : '',
+      }
+    }
+  } catch (e) {
+    console.error('[loadProviderConfig]', e instanceof Error ? e.message : String(e))
+  }
   return {
     provider: process.env.ACTIVE_PROVIDER || 'ollama',
     model: process.env.ACTIVE_MODEL || '',  // Empty = auto-detect first available
@@ -53,32 +62,57 @@ function saveProviderConfig(config) {
 
 let activeConfig = loadProviderConfig()
 
-// Verify configured model exists, or auto-detect first available implicitcad-* model
+// Verify configured model exists, or auto-detect first available model
 async function autoDetectModel() {
-  if (activeConfig.provider !== 'ollama') return
+  const { provider } = activeConfig
   try {
-    const models = await listOllamaModels()
-    const modelNames = models.map(m => m.name.replace(/:latest$/, ''))
-
-    // If configured model exists, keep it
-    if (activeConfig.model && modelNames.includes(activeConfig.model)) {
-      console.log(`Using configured model: ${activeConfig.model}`)
+    let modelNames = []
+    if (provider === 'ollama') {
+      const models = await listOllamaModels()
+      modelNames = models.map(m => m.name.replace(/:latest$/, ''))
+    } else if (provider === 'openai') {
+      modelNames = await listOpenAIModels()
+    } else if (provider === 'anthropic') {
+      modelNames = await listAnthropicModels()
+    } else {
       return
     }
 
-    // Configured model doesn't exist (stale config) or empty — find first available
-    const available = modelNames.find(n => n.startsWith('implicitcad'))
+    if (provider !== 'ollama' && modelNames.length === 0) return
+
+    // If configured model exists, keep it
+    if (activeConfig.model && modelNames.includes(activeConfig.model)) {
+      if (DEBUG_SERVER) console.log(`Using configured model: ${activeConfig.model}`)
+      return
+    }
+
+    // Keep cloud providers unset until the user picks a model in the UI.
+    if (!activeConfig.model && provider !== 'ollama') return
+
+    // Configured model doesn't exist or empty — find first available
+    let available
+    if (provider === 'ollama') {
+      available = modelNames.find(n => n.startsWith('implicitcad')) || modelNames[0]
+    } else {
+      available = modelNames[0]
+    }
+
     if (available) {
       const prev = activeConfig.model
       activeConfig.model = available
       saveProviderConfig(activeConfig)
-      console.log(`Model '${prev || '(none)'}' not found, switched to: ${available}`)
-    } else if (!activeConfig.model) {
+      if (DEBUG_SERVER) console.log(`Model '${prev || '(none)'}' not found, switched to: ${available}`)
+    } else if (activeConfig.model && provider !== 'ollama') {
+      const prev = activeConfig.model
+      activeConfig.model = ''
+      saveProviderConfig(activeConfig)
+      if (DEBUG_SERVER) console.log(`Model '${prev}' not found, cleared selection for provider: ${provider}`)
+    } else if (!activeConfig.model && provider === 'ollama') {
       activeConfig.model = 'implicitcad-dev'
-      console.log('No implicitcad-* models found, defaulting to implicitcad-dev')
+      if (DEBUG_SERVER) console.log('No models found, defaulting to implicitcad-dev')
     }
   } catch {
-    if (!activeConfig.model) activeConfig.model = 'implicitcad-dev'
+    if (!activeConfig.model && provider === 'ollama') activeConfig.model = 'implicitcad-dev'
   }
 }
 
@@ -163,6 +197,7 @@ if (!fs.existsSync(WORKSPACE)) {
 // ── System Prompt ───────────────────────────────────────────────────────────
 
 function loadSystemPrompt() {
+  // Primary: server/ (ships inside Docker image). Fallback: ai_context/ (local dev).
   const paths = [
     path.join(__dirname, 'implicitcad-manual.md'),
     path.join(__dirname, '..', 'ai_context', 'implicitcad-manual.md'),
@@ -170,10 +205,10 @@ function loadSystemPrompt() {
   for (const p of paths) {
     try {
       const manual = fs.readFileSync(p, 'utf8')
-      return `You are an expert at generating ImplicitCAD (ExtOpenSCAD) code.\n\nCRITICAL OUTPUT FORMAT:\n- Output ONLY valid ImplicitCAD code. Nothing else.\n- Do NOT explain your reasoning or thought process.\n- Do NOT include <think> tags or any internal reasoning.\n- Do NOT include markdown fences (\`\`\`).\n- Do NOT repeat the user's request in your output.\n- Your entire response must be valid, compilable ImplicitCAD code.\n- Comments are allowed ONLY as // inline comments within the code.\n\nCRITICAL: ImplicitCAD is NOT full OpenSCAD. hull, minkowski, offset, resize, polyhedron, surface, text, import are NOT supported.\n\n---\n\n${manual}\n\n---\n\nOUTPUT RULES:\n1. Output ONLY valid ImplicitCAD code — your entire response is code.\n2. If modifying existing code, output the COMPLETE updated file.\n3. Prefer ImplicitCAD extensions: union(r=N), cube(r=N), torus(), ellipsoid().\n4. NEVER use unsupported features.\n5. Keep code self-contained.\n6. NEVER output anything before or after the code.`
+      return `You are an expert at generating ImplicitCAD (ExtOpenSCAD) code.\n\nCRITICAL OUTPUT FORMAT:\n- Output ONLY valid ImplicitCAD code. Nothing else.\n- Do NOT explain your reasoning or thought process.\n- Do NOT include <think> tags or any internal reasoning.\n- Do NOT include markdown fences (\`\`\`).\n- Do NOT repeat the user's request in your output.\n- Your entire response must be valid, compilable ImplicitCAD code.\n- Comments are allowed ONLY as // inline comments within the code.\n\nCRITICAL: ImplicitCAD is NOT full OpenSCAD. hull, minkowski, offset, resize, polyhedron, surface, text, import are NOT supported.\n- Avoid zero-scale extrusions such as linear_extrude(scale=0); they can compile to an empty STL in ImplicitCAD. Use cone() or a small non-zero scale instead.\n\n---\n\n${manual}\n\n---\n\nOUTPUT RULES:\n1. Output ONLY valid ImplicitCAD code — your entire response is code.\n2. If modifying existing code, output the COMPLETE updated file.\n3. Prefer ImplicitCAD extensions: union(r=N), cube(r=N), torus(), ellipsoid().\n4. NEVER use unsupported features.\n5. Keep code self-contained.\n6. NEVER output anything before or after the code.`
     } catch {}
   }
-  return 'You generate ImplicitCAD code. Output ONLY valid code — no explanations, no reasoning, no <think> tags, no markdown fences. Your entire response must be compilable code. Use: cube, sphere, cylinder, cone, torus, ellipsoid. CSG: union(r=N), difference(r=N), intersection(r=N). NO hull, minkowski, offset, resize, text, import.'
+  return 'You generate ImplicitCAD code. Output ONLY valid code — no explanations, no reasoning, no <think> tags, no markdown fences. Your entire response must be compilable code. Use: cube, sphere, cylinder, cone, torus, ellipsoid. CSG: union(r=N), difference(r=N), intersection(r=N). NO hull, minkowski, offset, resize, text, import. Avoid linear_extrude(scale=0); it can produce an empty STL in ImplicitCAD.'
 }
 
 const SYSTEM_PROMPT = loadSystemPrompt()
@@ -315,7 +350,27 @@ function extractCode(response, inputCode, inputPrompt) {
     return codeLines.join('\n').trim() || trimmed
   }
 
-  return trimmed
+  // Last resort: find the earliest OpenSCAD primitive that starts a contiguous
+  // code tail at the end of the response. Reasoning prose comes first, code last.
+  // Collect all primitive positions, then pick the earliest one whose slice to end
+  // contains only code (no sentence-like prose lines between primitives).
+  const primitives = /(?:union|difference|intersection|cube|sphere|cylinder|translate|rotate|scale|linear_extrude|rotate_extrude|hull|module|include|import|torus|ellipsoid|cone)\s*\(/gi
+  const matches = []
+  let m2
+  while ((m2 = primitives.exec(trimmed)) !== null) {
+    matches.push(m2.index)
+  }
+  // Try from the earliest match — the longest valid tail wins
+  for (const idx of matches) {
+    const tail = trimmed.slice(idx).trim()
+    if (!/[;}]/.test(tail)) continue
+    // Reject if the tail still contains obvious prose (sentence with 5+ words before any code)
+    const firstLine = tail.split('\n')[0]
+    if (/^[A-Z][a-z]+ [a-z]+ [a-z]+ [a-z]+ [a-z]+/i.test(firstLine)) continue
+    return tail
+  }
+
+  return ''
 }
 
 function consumeLeadingEcho(token, state) {
@@ -462,32 +517,21 @@ function buildMessages(prompt, code, sessionId) {
 
   messages.push({ role: 'user', content: userContent })
 
-  // Debug: log prompt packing for remote diagnosis
-  const totalEstTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0)
-  console.log(`[buildMessages] model=${activeConfig.model} msgs=${messages.length} est_tokens=${totalEstTokens}/${maxContext} max_output=${maxOutput} thread_context=${includeThreadContext ? 'on' : 'off'} thread_prompts=${thread.recentUserPrompts.length} has_summary=${!!thread.summary}`)
+  if (process.env.DEBUG_LLM_STREAM === '1') {
+    const totalEstTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0)
+    console.log(`[buildMessages] model=${activeConfig.model} msgs=${messages.length} est_tokens=${totalEstTokens}/${maxContext} max_output=${maxOutput} thread_context=${includeThreadContext ? 'on' : 'off'} thread_prompts=${thread.recentUserPrompts.length} has_summary=${!!thread.summary}`)
+  }
 
   return messages
 }
 
-// ── Provider: CLI (legacy) ──────────────────────────────────────────────────
-
-function callLLMCli(prompt) {
-  return new Promise((resolve, reject) => {
-    const args = LLM_COMMAND.split(/\s+/)
-    const cmd = args.shift()
-    const proc = spawn(cmd, args, { shell: true, env: { ...process.env }, stdio: ['pipe', 'pipe', 'pipe'] })
-    let stdout = '', stderr = ''
-    proc.stdout.on('data', d => stdout += d)
-    proc.stderr.on('data', d => stderr += d)
-    const timer = setTimeout(() => { proc.kill('SIGTERM'); reject(new Error('LLM timeout')) }, 120000)
-    proc.on('close', code => { clearTimeout(timer); code !== 0 ? reject(new Error(stderr || 'LLM failed')) : resolve(stdout) })
-    proc.on('error', err => { clearTimeout(timer); reject(err) })
-    proc.stdin.write(prompt)
-    proc.stdin.end()
-  })
-}
-
 // ── Provider: Ollama ────────────────────────────────────────────────────────
+
+/** Extract text from an Ollama message object.
+ *  Qwen3.5 thinking models put output in `thinking` instead of `content`. */
+function getOllamaText(message) {
+  return message?.content || message?.thinking || ''
+}
 
 async function callOllama(messages, model, stream = false) {
   const profile = getModelProfile(model)
@@ -512,7 +556,7 @@ async function callOllama(messages, model, stream = false) {
   }
   if (stream) return resp.body
   const data = await resp.json()
-  return data.message?.content || ''
+  return getOllamaText(data.message)
 }
 
 async function listOllamaModels() {
@@ -521,7 +565,8 @@ async function listOllamaModels() {
     if (!resp.ok) return []
     const data = await resp.json()
     return (data.models || []).map(m => ({ name: m.name, size: m.size, modified: m.modified_at }))
-  } catch {
+  } catch (e) {
+    if (DEBUG_SERVER) console.error('[listOllamaModels]', e instanceof Error ? e.message : String(e))
     return []
   }
 }
@@ -536,6 +581,99 @@ async function isOllamaReachable() {
 }
 
 // ── Provider: OpenAI ────────────────────────────────────────────────────────
+
+let openaiModelsCache = { models: [], fetchedAt: 0 }
+
+function isOpenAIChatModel(id) {
+  const lower = String(id || '').toLowerCase()
+  if (!/^(gpt-|o[134]|chatgpt)/.test(lower)) return false
+  if (/(?:^|-)pro(?:-|$)/.test(lower)) return false
+  return ![
+    'realtime',
+    'audio',
+    'image',
+    'instruct',
+    'tts',
+    'transcribe',
+    'translation',
+    'moderation',
+    'embedding',
+    'search-api',
+    'search-preview',
+    'deep-research',
+    'computer-use',
+    'sora',
+    'whisper',
+    'omni-moderation',
+  ].some(fragment => lower.includes(fragment))
+}
+
+function normalizeModelFamily(id) {
+  return String(id || '')
+    .replace(/-\d{4}-\d{2}-\d{2}$/i, '')
+    .replace(/-\d{8}$/i, '')
+    .replace(/-latest$/i, '')
+}
+
+function preferStableAlias(candidate, current) {
+  const isAlias = (id) => !/-\d{4}-\d{2}-\d{2}$/i.test(id) && !/-\d{8}$/i.test(id)
+  return isAlias(candidate.id) && !isAlias(current.id)
+}
+
+function pickLatestModelFamilies(models, {
+  limit = 5,
+  getId = (model) => model.id,
+  getCreated = (model) => model.created || 0,
+} = {}) {
+  const families = new Map()
+
+  for (const model of models) {
+    const id = getId(model)
+    const created = getCreated(model)
+    const family = normalizeModelFamily(id)
+    const existing = families.get(family)
+    if (
+      !existing ||
+      created > existing.created ||
+      (created === existing.created && preferStableAlias({ id }, existing))
+    ) {
+      families.set(family, { id, created })
+    }
+  }
+
+  return [...families.values()]
+    .sort((a, b) => b.created - a.created || a.id.localeCompare(b.id))
+    .slice(0, limit)
+    .map(model => model.id)
+}
+
+async function listOpenAIModels() {
+  if (!OPENAI_API_KEY) return []
+  const now = Date.now()
+  if (openaiModelsCache.models.length && now - openaiModelsCache.fetchedAt < 300_000) {
+    return openaiModelsCache.models
+  }
+  try {
+    const resp = await fetch('https://api.openai.com/v1/models', {
+      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!resp.ok) return openaiModelsCache.models
+    const data = await resp.json()
+    const chatModels = pickLatestModelFamilies(
+      (data.data || []).filter(m => isOpenAIChatModel(m.id)),
+      {
+        limit: 5,
+        getCreated: (model) => Number(model.created) || 0,
+      },
+    )
+    openaiModelsCache = { models: chatModels, fetchedAt: now }
+    return chatModels
+  } catch (e) {
+    if (DEBUG_SERVER) console.error('[listOpenAIModels]', e instanceof Error ? e.message : String(e))
+    return openaiModelsCache.models
+  }
+}
 
 async function callOpenAI(messages, model, stream = false) {
   if (!OPENAI_API_KEY) throw new Error('OpenAI API key not configured. Set OPENAI_API_KEY env var.')
@@ -557,6 +695,60 @@ async function callOpenAI(messages, model, stream = false) {
 }
 
 // ── Provider: Anthropic ─────────────────────────────────────────────────────
+
+let anthropicModelsCache = { models: [], fetchedAt: 0 }
+
+function resetProviderModelCaches(provider) {
+  if (!provider || provider === 'openai') {
+    openaiModelsCache = { models: [], fetchedAt: 0 }
+  }
+  if (!provider || provider === 'anthropic') {
+    anthropicModelsCache = { models: [], fetchedAt: 0 }
+  }
+}
+
+async function listAnthropicModels() {
+  if (!ANTHROPIC_API_KEY) return []
+  const now = Date.now()
+  if (anthropicModelsCache.models.length && now - anthropicModelsCache.fetchedAt < 300_000) {
+    return anthropicModelsCache.models
+  }
+  try {
+    let afterId = ''
+    const models = []
+    for (let page = 0; page < 10; page++) {
+      const params = new URLSearchParams({ limit: '100' })
+      if (afterId) params.set('after_id', afterId)
+      const resp = await fetch(`https://api.anthropic.com/v1/models?${params.toString()}`, {
+        headers: {
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        signal: AbortSignal.timeout(5000),
+      })
+      if (!resp.ok) return anthropicModelsCache.models
+      const data = await resp.json()
+      models.push(...(data.data || []))
+      if (pickLatestModelFamilies(models, {
+        limit: 5,
+        getCreated: (model) => Date.parse(model.created_at || '') || 0,
+      }).length >= 5) {
+        break
+      }
+      if (!data.has_more || !data.last_id) break
+      afterId = data.last_id
+    }
+    const latestModels = pickLatestModelFamilies(models, {
+      limit: 5,
+      getCreated: (model) => Date.parse(model.created_at || '') || 0,
+    })
+    anthropicModelsCache = { models: latestModels, fetchedAt: now }
+    return latestModels
+  } catch (e) {
+    if (DEBUG_SERVER) console.error('[listAnthropicModels]', e instanceof Error ? e.message : String(e))
+    return anthropicModelsCache.models
+  }
+}
 
 async function callAnthropic(messages, model, stream = false) {
   if (!ANTHROPIC_API_KEY) throw new Error('Anthropic API key not configured. Set ANTHROPIC_API_KEY env var.')
@@ -623,7 +815,7 @@ async function* normalizeStream(providerStream, provider, traceId) {
           if (!line.trim()) continue
           try {
             const data = JSON.parse(line)
-            let token = data.message?.content || ''
+            let token = getOllamaText(data.message)
             // Debug: log first 10 raw events with full field structure
             if (process.env.DEBUG_LLM_STREAM === '1' && rawEventCount < 10) {
               rawEventCount++
@@ -740,6 +932,16 @@ function compileScad(code, options = {}) {
       if (ext === 'stl') {
         validation = await runAdmesh(outPath)
       }
+      const facetCount = ext === 'stl' && data.length >= 84 ? data.readUInt32LE(80) : null
+      const zeroScaleExtrude = /linear_extrude\s*\([^)]*\bscale\s*=\s*0(?:[)\s,]|$)/is.test(code)
+      if ((validation && validation.facets === 0) || facetCount === 0) {
+        try { fs.unlinkSync(outPath) } catch {}
+        const hint = zeroScaleExtrude
+          ? ' `linear_extrude(scale=0)` collapsed to an empty mesh. Use cone() or a small non-zero scale instead.'
+          : ''
+        resolve({ ok: false, error: `Compilation produced an empty mesh (0 faces).${hint}` })
+        return
+      }
       try { fs.unlinkSync(outPath) } catch {}
       resolve({ ok: true, data, validation })
     })
@@ -752,19 +954,11 @@ function compileScad(code, options = {}) {
   })
 }
 
-// ── Approved Model Lists ────────────────────────────────────────────────────
-
-const OPENAI_MODELS = [
-  'gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
-]
-
-const ANTHROPIC_MODELS = [
-  'claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4', 'claude-sonnet-4',
-]
-
 // ── HTTP Server ─────────────────────────────────────────────────────────────
 
 const server = http.createServer(async (req, res) => {
+  // Wildcard CORS is intentional: this server runs locally behind Docker/nginx,
+  // not on the public internet. Tightening breaks the Vite dev proxy workflow.
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
@@ -841,21 +1035,7 @@ const server = http.createServer(async (req, res) => {
       // Build messages first, THEN update thread (avoids duplicating current prompt)
       const messages = buildMessages(body.prompt, body.code, body.sessionId)
       updateThread(body.sessionId, body.prompt.trim())
-      let raw
-
-      if (activeConfig.provider === 'cli') {
-        // Legacy CLI path — flatten messages to single string
-        let fullPrompt = ''
-        for (const m of messages) {
-          if (m.role === 'system') fullPrompt += m.content + '\n\n'
-          else if (m.role === 'user') fullPrompt += `User: ${m.content}\n\n`
-          else fullPrompt += `Assistant: ${m.content}\n\n`
-        }
-        fullPrompt += 'Generate the OpenSCAD code:'
-        raw = await callLLMCli(fullPrompt)
-      } else {
-        raw = await routeInference(messages, false)
-      }
+      const raw = await routeInference(messages, false)
 
       const code = extractCode(raw, body.code, body.prompt)
       if (!code) {
@@ -902,24 +1082,6 @@ const server = http.createServer(async (req, res) => {
       // Handle client disconnect
       let aborted = false
       req.on('close', () => { aborted = true })
-
-      if (activeConfig.provider === 'cli') {
-        // CLI fallback: non-streaming, send as single SSE event
-        // Use buildMessages for budgeting, then flatten
-        let fullPrompt = ''
-        for (const m of messages) {
-          if (m.role === 'system') fullPrompt += m.content + '\n\n'
-          else if (m.role === 'user') fullPrompt += `User: ${m.content}\n\n`
-          else fullPrompt += `Assistant: ${m.content}\n\n`
-        }
-        fullPrompt += 'Generate the OpenSCAD code:'
-        const raw = await callLLMCli(fullPrompt)
-        const code = extractCode(raw, body.code, body.prompt)
-        res.write(`data: ${JSON.stringify({ token: raw, done: false })}\n\n`)
-        res.write(`data: ${JSON.stringify({ token: '', done: true, code })}\n\n`)
-        res.end()
-        return
-      }
 
       const providerStream = await routeInference(messages, true)
       let accumulated = ''
@@ -999,12 +1161,17 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/providers/select' && req.method === 'POST') {
     try {
       const body = await parseJsonBody(req)
-      if (!body.provider || !body.model) {
+      const VALID_PROVIDERS = ['ollama', 'openai', 'anthropic']
+      if (!body.provider || !VALID_PROVIDERS.includes(body.provider)) {
         res.writeHead(400, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: 'provider and model required' }))
+        res.end(JSON.stringify({ error: `Invalid provider. Must be one of: ${VALID_PROVIDERS.join(', ')}` }))
         return
       }
-      activeConfig = { provider: body.provider, model: body.model }
+      activeConfig = {
+        provider: body.provider,
+        model: typeof body.model === 'string' ? body.model : '',
+      }
+      await autoDetectModel()
       saveProviderConfig(activeConfig)
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify(activeConfig))
@@ -1023,16 +1190,15 @@ const server = http.createServer(async (req, res) => {
 
     if (provider === 'ollama') {
       const allModels = await listOllamaModels()
-      // App-facing view: only implicitcad-* models, strip :latest suffix to avoid duplicates
-      models = [...new Set(
-        allModels
-          .filter(m => m.name.startsWith('implicitcad'))
-          .map(m => m.name.replace(/:latest$/, ''))
-      )]
+      const deduped = [...new Set(allModels.map(m => m.name.replace(/:latest$/, '')))]
+      // Sort: implicitcad-* models first (preferred/fine-tuned), then all others
+      const preferred = deduped.filter(n => n.startsWith('implicitcad')).sort()
+      const others = deduped.filter(n => !n.startsWith('implicitcad')).sort()
+      models = [...preferred, ...others]
     } else if (provider === 'openai') {
-      models = OPENAI_MODELS
+      models = await listOpenAIModels()
     } else if (provider === 'anthropic') {
-      models = ANTHROPIC_MODELS
+      models = await listAnthropicModels()
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -1059,8 +1225,15 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/providers/keys' && req.method === 'PUT') {
     try {
       const body = await parseJsonBody(req)
-      if (typeof body.openaiKey === 'string') OPENAI_API_KEY = body.openaiKey.trim()
-      if (typeof body.anthropicKey === 'string') ANTHROPIC_API_KEY = body.anthropicKey.trim()
+      if (typeof body.openaiKey === 'string') {
+        OPENAI_API_KEY = body.openaiKey.trim()
+        resetProviderModelCaches('openai')
+      }
+      if (typeof body.anthropicKey === 'string') {
+        ANTHROPIC_API_KEY = body.anthropicKey.trim()
+        resetProviderModelCaches('anthropic')
+      }
+      await autoDetectModel()
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({
         openaiKeySet: !!OPENAI_API_KEY,

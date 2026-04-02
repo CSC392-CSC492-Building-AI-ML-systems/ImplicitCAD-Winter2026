@@ -1,2 +1,20 @@
-# Force shell scripts to use LF line endings on all platforms
+# Force LF line endings for files that will run inside Linux containers or shells.
+# Windows Git (core.autocrlf=true) converts LF→CRLF on checkout by default,
+# which breaks shell scripts, Dockerfiles, and config files inside containers.
+
+# Shell scripts
 *.sh text eol=lf
+icad text eol=lf
+
+# Docker — these run inside Linux containers
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+docker-compose.yml text eol=lf
+docker-compose.override.yml text eol=lf
+
+# Config files used inside containers
+nginx.conf text eol=lf
+*.conf text eol=lf
+
+# Entrypoints and similar
+entrypoint.sh text eol=lf

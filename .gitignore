@@ -9,6 +9,7 @@ dist-ssr/
 # Environment
 .env
 .env.*
+!.env.example
 
 # OS
 .DS_Store
@@ -41,6 +42,10 @@ _workspace/
 
 # Docker
 docker-compose.override.yml
+
+# SSH keys
+runpod
+runpod.pub
 
 #Folder
 my-video/

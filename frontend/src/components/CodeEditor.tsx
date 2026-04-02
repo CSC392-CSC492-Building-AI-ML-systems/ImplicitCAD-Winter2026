@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect } from 'react'
 import Editor, { DiffEditor, type OnMount, type BeforeMount, type Monaco } from '@monaco-editor/react'
-import { Check, ChevronRight, FileCode2, PanelLeftOpen, X as XIcon } from 'lucide-react'
+import { Check, FileCode2, X as XIcon } from 'lucide-react'
 import { openscadLanguageDef, studioLightTheme, studioDarkTheme } from '../lib/openscadLanguage'
 import { registerCompletionProvider, registerSignatureHelpProvider } from '../lib/openscadCompletions'
 import { useEditorStore } from '../stores/editorStore'
@@ -22,19 +22,17 @@ export function CodeEditor({ onRender, onCodeChange }: CodeEditorProps) {
   const pendingDiff = useEditorStore((s) => s.pendingDiff)
   const acceptDiff = useEditorStore((s) => s.acceptDiff)
   const rejectDiff = useEditorStore((s) => s.rejectDiff)
-  const rootName = useFileTreeStore((s) => s.rootName)
   const openFiles = useFileTreeStore((s) => s.openFiles)
   const activeFile = useFileTreeStore((s) => s.activeFile)
   const isDirty = useFileTreeStore((s) => s.isDirty)
   const setActiveFile = useFileTreeStore((s) => s.setActiveFile)
   const requestCloseFile = useFileTreeStore((s) => s.requestCloseFile)
-  const revealInExplorer = useFileTreeStore((s) => s.revealInExplorer)
+  const rootName = useFileTreeStore((s) => s.rootName)
   const fileName = activeFile?.split('/').pop() ?? 'Scratch buffer'
   const filePath = activeFile
     ? [rootName, activeFile].filter(Boolean).join('/')
     : 'Open a folder to edit project files beside the explorer.'
   const saveHint = activeFile ? 'Cmd/Ctrl+S to save' : 'Open Folder to start working from disk'
-  const breadcrumbParts = activeFile ? activeFile.split('/') : []
 
   const handleBeforeMount: BeforeMount = (monaco) => {
     monacoRef.current = monaco
@@ -183,48 +181,6 @@ export function CodeEditor({ onRender, onCodeChange }: CodeEditorProps) {
         <div className="hidden shrink-0 text-[11px] text-text-muted md:block">
           {saveHint}
         </div>
-      </div>
-
-      <div className="flex items-center justify-between gap-3 border-b border-border-default bg-bg-base px-4 py-2 text-[11px] text-text-muted shrink-0">
-        <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
-          <span className="rounded bg-bg-raised px-2 py-0.5 font-medium text-text-secondary">
-            {rootName ?? 'Workspace'}
-          </span>
-          {breadcrumbParts.length > 0 ? (
-            breadcrumbParts.map((part, index) => {
-              const isLast = index === breadcrumbParts.length - 1
-              const segmentPath = breadcrumbParts.slice(0, index + 1).join('/')
-
-              return (
-                <div key={segmentPath} className="flex items-center gap-1 shrink-0">
-                  <ChevronRight size={12} className="text-text-faint" />
-                  {isLast ? (
-                    <span className="font-medium text-text-primary">{part}</span>
-                  ) : (
-                    <button
-                      onClick={() => revealInExplorer(segmentPath)}
-                      className="rounded px-1.5 py-0.5 hover:bg-bg-hover hover:text-text-primary transition-colors"
-                    >
-                      {part}
-                    </button>
-                  )}
-                </div>
-              )
-            })
-          ) : (
-            <span>Scratch buffer</span>
-          )}
-        </div>
-
-        {activeFile && (
-          <button
-            onClick={() => revealInExplorer()}
-            className="hidden shrink-0 items-center gap-1.5 rounded-md border border-border-default bg-bg-surface px-2 py-1 text-[11px] font-medium text-text-secondary transition-colors hover:text-text-primary md:flex"
-          >
-            <PanelLeftOpen size={12} />
-            Reveal in Explorer
-          </button>
-        )}
       </div>
 
       <div className="min-h-0 flex-1 relative">

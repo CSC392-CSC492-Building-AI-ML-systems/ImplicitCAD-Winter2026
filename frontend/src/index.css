@@ -156,6 +156,11 @@
   50% { border-color: var(--accent); opacity: 1; }
 }
 
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 .animate-msg-in {
   animation: msgIn 0.2s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
@@ -176,12 +181,17 @@
   animation: pulseAccent 1.5s ease-in-out infinite;
 }
 
+.animate-slide-in-right {
+  animation: slide-in-right 0.2s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-msg-in,
   .animate-drop-in,
   .animate-palette-in,
   .animate-typing-dot,
-  .animate-pulse-accent {
+  .animate-pulse-accent,
+  .animate-slide-in-right {
     animation: none;
   }
   .animate-spin {

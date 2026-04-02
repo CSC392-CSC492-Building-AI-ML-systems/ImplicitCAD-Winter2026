@@ -38,6 +38,14 @@ export interface PendingDiff {
   prompt: string
 }
 
+export interface Toast {
+  id: number
+  message: string
+  level: LogEntry['level']
+  count: number
+  createdAt: number
+}
+
 interface EditorState {
   code: string
   autoRender: boolean
@@ -48,6 +56,8 @@ interface EditorState {
   cursorColumn: number
   commandPaletteOpen: boolean
   pendingDiff: PendingDiff | null
+  toasts: Toast[]
+  unreadErrors: number
   setCode: (code: string) => void
   setAutoRender: (v: boolean) => void
   setIsDark: (v: boolean) => void
@@ -59,6 +69,9 @@ interface EditorState {
   setPendingDiff: (diff: PendingDiff | null) => void
   acceptDiff: () => void
   rejectDiff: () => void
+  addToast: (message: string, level?: LogEntry['level']) => void
+  dismissToast: (id: number) => void
+  clearUnreadErrors: () => void
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -71,6 +84,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   cursorColumn: 1,
   commandPaletteOpen: false,
   pendingDiff: null,
+  toasts: [],
+  unreadErrors: 0,
   setCode: (code) => {
     debouncedSave(code)
     set({ code })
@@ -82,8 +97,11 @@ export const useEditorStore = create<EditorState>((set) => ({
     set({ isDark })
   },
   log: (message, level = 'info') =>
-    set((s) => ({ logs: [...s.logs.slice(-200), { id: logIdCounter++, time: now(), message, level }] })),
-  clearLogs: () => set({ logs: [] }),
+    set((s) => ({
+      logs: [...s.logs.slice(-200), { id: logIdCounter++, time: now(), message, level }],
+      unreadErrors: level === 'error' ? s.unreadErrors + 1 : s.unreadErrors,
+    })),
+  clearLogs: () => set({ logs: [], unreadErrors: 0 }),
   setErrors: (errors) => set({ errors }),
   setCursorPosition: (cursorLine, cursorColumn) => set({ cursorLine, cursorColumn }),
   setCommandPaletteOpen: (commandPaletteOpen) => set({ commandPaletteOpen }),
@@ -95,6 +113,19 @@ export const useEditorStore = create<EditorState>((set) => ({
       return { code: s.pendingDiff.proposed, pendingDiff: null }
     }),
   rejectDiff: () => set({ pendingDiff: null }),
+  addToast: (message, level = 'error') => set((s) => {
+    const now = Date.now()
+    // Deduplicate: if same message exists within 30s, bump count
+    const existing = s.toasts.find(t => t.message === message && t.level === level && now - t.createdAt < 30_000)
+    if (existing) {
+      return { toasts: s.toasts.map(t => t.id === existing.id ? { ...t, count: t.count + 1 } : t) }
+    }
+    // Expire stale toasts older than 30s with same message before adding
+    const fresh = s.toasts.filter(t => !(t.message === message && t.level === level && now - t.createdAt >= 30_000))
+    return { toasts: [...fresh.slice(-4), { id: logIdCounter++, message, level, count: 1, createdAt: now }] }
+  }),
+  dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter(t => t.id !== id) })),
+  clearUnreadErrors: () => set({ unreadErrors: 0 }),
 }))
 
 function now() {

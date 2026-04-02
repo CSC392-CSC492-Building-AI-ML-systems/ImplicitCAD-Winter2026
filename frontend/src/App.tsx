@@ -12,6 +12,8 @@ import { useViewerStore } from './stores/viewerStore'
 import { useLayoutStore, type ZoneId } from './stores/layoutStore'
 import { useFileTreeStore } from './stores/fileTreeStore'
 import { useRender } from './hooks/useRender'
+import { ToastContainer } from './components/Toast'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 const separatorH = "h-1.5 flex items-center justify-center bg-border-subtle hover:bg-accent transition-colors cursor-row-resize group z-[var(--z-panel)] relative"
 const separatorDot = "w-8 h-1 rounded-full bg-border-strong group-hover:bg-white/50 transition-colors"
@@ -121,7 +123,6 @@ function SmallViewportFallback() {
 /* ── App ───────────────────────────────────────────────────────────── */
 
 export default function App() {
-  const code = useEditorStore((s) => s.code)
   const log = useEditorStore((s) => s.log)
   const setBackendMode = useViewerStore((s) => s.setBackendMode)
   const { render, scheduleRender } = useRender()
@@ -138,8 +139,8 @@ export default function App() {
   const rightBottomEmpty = useLayoutStore((s) => s.zones.bottomRight.length === 0)
 
   const handleRender = useCallback(() => {
-    render(code)
-  }, [render, code])
+    render(useEditorStore.getState().code)
+  }, [render])
 
   const handleCodeChange = useCallback(
     (newCode: string) => {
@@ -225,7 +226,7 @@ export default function App() {
   }, [handleRender])
 
   return (
-    <>
+    <ErrorBoundary>
     <SmallViewportFallback />
     <div className="flex flex-col h-screen bg-bg-base text-text-primary">
       <Header onRender={handleRender} onOpenFolder={handleOpenFolder} />
@@ -321,7 +322,8 @@ export default function App() {
       <StatusBar />
       <CommandPalette onRender={handleRender} />
       <ConfirmDialogWrapper />
+      <ToastContainer />
     </div>
-    </>
+    </ErrorBoundary>
   )
 }
