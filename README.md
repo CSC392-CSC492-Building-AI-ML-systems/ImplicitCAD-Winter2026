@@ -17,6 +17,19 @@ This project fine-tunes an LLM to turn natural-language 3D editing requests into
 
 Special thanks to our industry mentors [Julia Longtin](https://github.com/julialongtin) and [Arthur Wolf](https://github.com/arthurwolf), and to the [ImplicitCAD project](https://implicitcad.org/) for the language, toolchain, and reference material that made this work possible.
 
+## Team
+
+CSC398 Group 5
+
+- Ziao Liu
+- Ziheng Zhou
+- Leon Wang
+- Haoping Yang
+- Hyeonbin (Owen) Chun
+
+University of Toronto
+
+
 ## Overview
 
 Code-based 3D modeling tools such as OpenSCAD and ImplicitCAD are precise and reproducible, but they are difficult for new users because geometric ideas must be translated into compilable programs. This project explores whether a domain-tuned LLM can lower that barrier by turning natural-language editing requests into working SCAD code, then pairing the model with compilation, mesh validation, and an interactive studio interface.
@@ -443,17 +456,6 @@ studio.sh          Main TUI entry point
 | Build runs out of memory | Increase Docker memory to at least `4 GB`, preferably more for local model use |
 | Frontend loads but API fails | Check `docker compose logs server` and `./studio.sh --status` |
 
-## Team
-
-CSC398 Group 5
-
-- Ziao Liu
-- Ziheng Zhou
-- Leon Wang
-- Haoping Yang
-- Hyeonbin (Owen) Chun
-
-University of Toronto
 
 ## License
 
