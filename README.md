@@ -17,6 +17,8 @@ This project fine-tunes an LLM to turn natural-language 3D editing requests into
 
 Special thanks to our industry mentors [Julia Longtin](https://github.com/julialongtin) and [Arthur Wolf](https://github.com/arthurwolf), and to the [ImplicitCAD project](https://implicitcad.org/) for the language, toolchain, and reference material that made this work possible.
 
+We would also like to sincerely thank CSC398 Course Instructor: Professor **Rutwa Engineer** for providing us with the opportunity to work with amazing industry mentors and for giving us the chance to present at the Mozilla AI Tinker event. It has been a truly rewarding semester, and we are grateful to everyone who supported us along the way.
+
 ## Team
 
 CSC398 Group 5
