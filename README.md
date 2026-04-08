@@ -459,6 +459,14 @@ studio.sh          Main TUI entry point
 | Frontend loads but API fails | Check `docker compose logs server` and `./studio.sh --status` |
 
 
+## Screenshot
+
+Once installed, the web UI would look something like this:
+
+<picture>
+  <img src="https://i.imgur.com/OrnbKsd.png" alt="Screenshot of the web UI once installed and running" />
+</picture>
+
 ## License
 
 AGPL-3.0-or-later
